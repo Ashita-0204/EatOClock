@@ -23,4 +23,5 @@ public interface IAuthService
     Task<bool> UpdateProfileAsync(string userId, string fullName, string? phoneNumber);
     Task<bool> ChangePasswordAsync(string userId, ChangePasswordDTO dto);
     Task<bool> DeactivateAccountAsync(string userId);
+    Task<bool> AssignAdminAsync(string userId);
 }

@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-
+using Auth_Service.Enums;
 namespace Auth_Service.DTOs;
 public class RegisterDTO
 {
@@ -9,10 +9,9 @@ public class RegisterDTO
     public string Password { get; set; } 
     [Required]
     public string FullName { get; set; }
-       [Required]
-    public string Role { get; set; }   
-    public string? PhoneNumber { get; set; }
-    public string Role { get; set; }  
+
+    [Required]
+    public AllowedRegistrationRole Role { get; set; }
      [RegularExpression(@"^\+?[0-9]{10}$", ErrorMessage = "Phone number must be 10 digits ")]
         public string? PhoneNumber { get; set; }
 }
