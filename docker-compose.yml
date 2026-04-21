@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: admin
       POSTGRES_DB: EatOClock_Auth
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -57,6 +57,32 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Restaurant;Username=postgres;Password=admin
+      - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
+      - Jwt__Issuer=EatOClock
+      - Jwt__Audience=EatOClockUsers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - eatoclock_network
+
+  menu-service:
+    build:
+      context: ./Services/Menu_Service
+      dockerfile: Dockerfile
+    container_name: eatoclock_menu
+    restart: always
+    ports:
+      - "5003:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Menu;Username=postgres;Password=admin
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
