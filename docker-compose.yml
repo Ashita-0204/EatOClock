@@ -1,0 +1,79 @@
+services:
+  postgres:
+    image: postgres:15
+    container_name: eatoclock_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: EatOClock_Auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d EatOClock_Auth"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - eatoclock_network
+
+  auth-service:
+    build:
+      context: ./Services/Auth_Service
+      dockerfile: Dockerfile
+    container_name: eatoclock_auth
+    restart: always
+    ports:
+      - "5001:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Auth;Username=postgres;Password=admin
+      - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
+      - Jwt__Issuer=EatOClock
+      - Jwt__Audience=EatOClockUsers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - eatoclock_network
+
+  restaurant-service:
+    build:
+      context: ./Services/Restaurant_Service
+      dockerfile: Dockerfile
+    container_name: eatoclock_restaurant
+    restart: always
+    ports:
+      - "5002:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Restaurant;Username=postgres;Password=admin
+      - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
+      - Jwt__Issuer=EatOClock
+      - Jwt__Audience=EatOClockUsers
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - eatoclock_network
+
+volumes:
+  postgres_data:
+
+networks:
+  eatoclock_network:
+    driver: bridge
