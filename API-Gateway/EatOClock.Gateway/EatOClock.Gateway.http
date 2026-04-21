@@ -1,6 +1,0 @@
-@EatOClock.Gateway_HostAddress = http://localhost:5084
-
-GET {{EatOClock.Gateway_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
