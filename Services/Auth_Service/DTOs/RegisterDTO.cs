@@ -12,4 +12,7 @@ public class RegisterDTO
        [Required]
     public string Role { get; set; }   
     public string? PhoneNumber { get; set; }
+    public string Role { get; set; }  
+     [RegularExpression(@"^\+?[0-9]{10}$", ErrorMessage = "Phone number must be 10 digits ")]
+        public string? PhoneNumber { get; set; }
 }
