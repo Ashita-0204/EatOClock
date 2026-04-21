@@ -106,4 +106,12 @@ public class AuthController : ControllerBase
         var result = await _authService.DeactivateAccountAsync(userId);
         return result ? Ok(new { message = "Account deactivated" }) : BadRequest(new { message = "Deactivation failed" });
     }
+
+    [Authorize(Roles = "Admin")]
+[HttpPost("assign-admin/{userId}")]
+public async Task<IActionResult> AssignAdmin(string userId)
+{
+    var result = await _authService.AssignAdminAsync(userId);
+    return result ? Ok(new { message = "Admin role assigned" }) : NotFound(new { message = "User not found" });
+}
 }
