@@ -129,6 +129,32 @@ namespace AuthService.Migrations
                         .HasDatabaseName("RoleNameIndex");
 
                     b.ToTable("AspNetRoles", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = "1",
+                            Name = "Customer",
+                            NormalizedName = "CUSTOMER"
+                        },
+                        new
+                        {
+                            Id = "2",
+                            Name = "RestaurantOwner",
+                            NormalizedName = "RESTAURANTOWNER"
+                        },
+                        new
+                        {
+                            Id = "3",
+                            Name = "DeliveryAgent",
+                            NormalizedName = "DELIVERYAGENT"
+                        },
+                        new
+                        {
+                            Id = "4",
+                            Name = "Admin",
+                            NormalizedName = "ADMIN"
+                        });
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
@@ -290,4 +316,5 @@ namespace AuthService.Migrations
 #pragma warning restore 612, 618
         }
     }
+}
 }

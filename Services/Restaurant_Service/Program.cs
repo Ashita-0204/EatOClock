@@ -87,3 +87,9 @@ app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Restaurant-Service", time = DateTime.UtcNow }));
 app.MapControllers();
 app.Run();
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Restaurant-Service", time = DateTime.UtcNow }));
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+app.Run();
