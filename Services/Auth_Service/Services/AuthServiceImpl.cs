@@ -16,14 +16,14 @@ using Auth_Service.Interfaces;
 using Auth_Service.Models;
 
 namespace Auth_Service.Services;
-public class AuthService : IAuthService
+public class AuthServiceImpl : IAuthService
 {
     private readonly UserManager<User> _userManager;
     private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IConfiguration _config;
     private readonly AppDbContext _context;
 
-    public AuthService(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, 
+    public AuthServiceImpl(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, 
                        IConfiguration config, AppDbContext context)
     {
         _userManager = userManager;
@@ -32,55 +32,56 @@ public class AuthService : IAuthService
         _context = context;
     }
 
-    public async Task<AuthResult> RegisterAsync(RegisterDTO dto)
+   public async Task<AuthResult> RegisterAsync(RegisterDTO dto)
+{
+    if (await _userManager.FindByEmailAsync(dto.Email) != null)
+        return new AuthResult { Success = false, Message = "Email already registered" };
+
+     // "Customer", "RestaurantOwner", or "DeliveryAgent"
+var roleName = dto.Role.ToString();
+
+    // Ensure role exists (seeded, but safety check)
+    if (!await _roleManager.RoleExistsAsync(roleName))
+        return new AuthResult { Success = false, Message = "Invalid role selected" };
+
+    var user = new User
     {
-        if (await _userManager.FindByEmailAsync(dto.Email) != null)
-            return new AuthResult { Success = false, Message = "Email already registered" };
+        UserName = dto.Email,
+        Email = dto.Email,
+        FullName = dto.FullName,
+        PhoneNumber = dto.PhoneNumber,
+        CreatedAt = DateTime.UtcNow
+    };
 
-        var user = new User
+    var result = await _userManager.CreateAsync(user, dto.Password);
+    if (!result.Succeeded)
+        return new AuthResult { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
+
+    await _userManager.AddToRoleAsync(user, roleName);
+
+    var accessToken = await GenerateJwtToken(user);
+    var refreshToken = GenerateRefreshToken();
+
+    user.RefreshToken = refreshToken;
+    user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+    await _userManager.UpdateAsync(user);
+
+    return new AuthResult
+    {
+        Success = true,
+        AccessToken = accessToken,
+        RefreshToken = refreshToken,
+        User = new UserDTO
         {
-            UserName = dto.Email,
-            Email = dto.Email,
-            FullName = dto.FullName,
-            PhoneNumber = dto.PhoneNumber,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        var result = await _userManager.CreateAsync(user, dto.Password);
-        if (!result.Succeeded)
-            return new AuthResult { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
-
-        if (!await _roleManager.RoleExistsAsync(dto.Role))
-            await _roleManager.CreateAsync(new IdentityRole(dto.Role));
-        
-        await _userManager.AddToRoleAsync(user, dto.Role);
-
-        var accessToken = await GenerateJwtToken(user);
-        var refreshToken = GenerateRefreshToken();
-
-        user.RefreshToken = refreshToken;
-        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        await _userManager.UpdateAsync(user);
-
-        var roles = await _userManager.GetRolesAsync(user);
-        
-        return new AuthResult
-        {
-            Success = true,
-            AccessToken = accessToken,
-            RefreshToken = refreshToken,
-            User = new UserDTO
-            {
-                Id = user.Id,
-                Email = user.Email!,
-                FullName = user.FullName,
-                Role = roles.FirstOrDefault() ?? "Customer",
-                PhoneNumber = user.PhoneNumber,
-                IsActive = user.IsActive
-            }
-        };
-    }
-
+            Id = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            Role = roleName,
+            PhoneNumber = user.PhoneNumber,
+            IsActive = user.IsActive
+        }
+    };
+}
     public async Task<AuthResult> LoginAsync(LoginDTO dto)
     {
         var user = await _userManager.FindByEmailAsync(dto.Email);
@@ -231,4 +232,15 @@ public class AuthService : IAuthService
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
     }
+public async Task<bool> AssignAdminAsync(string userId)
+{
+    var user = await _userManager.FindByIdAsync(userId);
+    if (user == null) return false;
+
+    if (!await _userManager.IsInRoleAsync(user, "Admin"))
+        await _userManager.AddToRoleAsync(user, "Admin");
+
+    return true;
+}
+
 }
