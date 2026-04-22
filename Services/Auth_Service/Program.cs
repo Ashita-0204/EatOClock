@@ -1,5 +1,6 @@
 using System;
 using System.Text;
+using Microsoft.Extensions.Configuration;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Auth_Service.Interfaces;
+
 
 var builder = WebApplication.CreateBuilder(args);
 

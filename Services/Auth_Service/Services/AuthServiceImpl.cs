@@ -37,6 +37,8 @@ public class AuthServiceImpl : IAuthService
     if (await _userManager.FindByEmailAsync(dto.Email) != null)
         return new AuthResult { Success = false, Message = "Email already registered" };
 
+     // "Customer", "RestaurantOwner", or "DeliveryAgent"
+var roleName = dto.Role.ToString();
     var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
 
     // Ensure role exists (seeded, but safety check)

@@ -38,6 +38,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
+builder.Services.AddAuthorization();
 builder.Services.AddScoped<IMenuService, MenuService>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -81,6 +82,11 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty;
 });
 
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Menu-Service", time = DateTime.UtcNow }));
+app.MapControllers();
+app.Run();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Menu-Service", time = DateTime.UtcNow }));
 
 app.UseAuthentication();
