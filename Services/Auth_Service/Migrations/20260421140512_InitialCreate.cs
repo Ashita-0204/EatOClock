@@ -240,3 +240,4 @@ namespace AuthService.Migrations
     }
 }
 }
+}
