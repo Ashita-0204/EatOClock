@@ -164,6 +164,17 @@ namespace AuthService.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.InsertData(
+                table: "AspNetRoles",
+                columns: new[] { "Id", "ConcurrencyStamp", "Name", "NormalizedName" },
+                values: new object[,]
+                {
+                    { "1", null, "Customer", "CUSTOMER" },
+                    { "2", null, "RestaurantOwner", "RESTAURANTOWNER" },
+                    { "3", null, "DeliveryAgent", "DELIVERYAGENT" },
+                    { "4", null, "Admin", "ADMIN" }
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
                 table: "AspNetRoleClaims",
@@ -227,4 +238,6 @@ namespace AuthService.Migrations
                 name: "AspNetUsers");
         }
     }
+}
+}
 }

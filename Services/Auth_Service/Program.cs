@@ -19,7 +19,7 @@ using Auth_Service.Interfaces;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
 
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()

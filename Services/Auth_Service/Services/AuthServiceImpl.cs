@@ -39,6 +39,7 @@ public class AuthServiceImpl : IAuthService
 
      // "Customer", "RestaurantOwner", or "DeliveryAgent"
 var roleName = dto.Role.ToString();
+    var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
 
     // Ensure role exists (seeded, but safety check)
     if (!await _roleManager.RoleExistsAsync(roleName))
