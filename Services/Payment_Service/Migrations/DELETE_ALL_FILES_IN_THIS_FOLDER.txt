@@ -1,0 +1,2 @@
+DELETE all .cs files in this Migrations folder before running docker-compose.
+The app now uses EnsureCreatedAsync() which creates tables directly from the model.

@@ -8,7 +8,7 @@ namespace Order_Service.Controllers;
 
 [ApiController]
 [Route("api/v1/orders")]
-[Authorize]
+
 public class OrderController : ControllerBase
 {
     private readonly IOrderService _svc;
@@ -22,6 +22,7 @@ public class OrderController : ControllerBase
         User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
 
     // UC-29: Place order
+    [Authorize(Roles = "Customer,Admin")]
     [HttpPost]
     public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderRequest req)
     {
@@ -58,6 +59,7 @@ public class OrderController : ControllerBase
     }
 
     // UC-32: Customer order history
+    [Authorize(Roles = "Customer,Admin")]
     [HttpGet("customer")]
     public async Task<IActionResult> GetMyOrders()
     {
@@ -75,8 +77,8 @@ public class OrderController : ControllerBase
     }
 
     // UC-30/34: Update status
+    [Authorize(Roles = "RestaurantOwner,Admin")]
     [HttpPut("{id:guid}/status")]
-    [Authorize(Roles = "RestaurantOwner,DeliveryAgent,Admin")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusRequest req)
     {
         try
@@ -96,6 +98,7 @@ public class OrderController : ControllerBase
 
     // UC-31: Cancel order
     [HttpPut("{id:guid}/cancel")]
+    [Authorize(Roles = "Customer,Admin")]
     public async Task<IActionResult> CancelOrder(Guid id, [FromBody] CancelOrderRequest req)
     {
         try
@@ -119,6 +122,7 @@ public class OrderController : ControllerBase
 
     // UC-33: Reorder
     [HttpPost("{id:guid}/reorder")]
+    [Authorize(Roles = "Customer,Admin")]
     public async Task<IActionResult> Reorder(Guid id)
     {
         try
@@ -139,7 +143,7 @@ public class OrderController : ControllerBase
 
     // UC-36: Assign delivery agent (internal/system)
     [HttpPut("{id:guid}/assign-agent")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,RestaurantOwner")]
     public async Task<IActionResult> AssignAgent(Guid id, [FromBody] AssignAgentRequest req)
     {
         try
