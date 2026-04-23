@@ -89,6 +89,26 @@ using (var scope = app.Services.CreateScope())
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole(role));
     }
+
+    // Seed default admin if none exists
+var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+const string adminEmail = "admin@eatoclock.com";
+const string adminPassword = "Admin@123456"; // change this after first login
+
+if (await userManager.FindByEmailAsync(adminEmail) == null)
+{
+    var adminUser = new User
+    {
+        UserName = adminEmail,
+        Email = adminEmail,
+        FullName = "System Admin",
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
+    };
+    var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+    if (createResult.Succeeded)
+        await userManager.AddToRoleAsync(adminUser, "Admin");
+}
 }
 
 app.UseSwagger();
@@ -97,6 +117,8 @@ app.UseSwaggerUI(c =>
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "EatOClock Auth API v1");
     c.RoutePrefix = string.Empty;
 });
+
+
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));
 

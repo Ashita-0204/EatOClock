@@ -92,7 +92,6 @@ namespace Menu_Service.Migrations
                         .HasColumnType("character varying(150)");
 
                     b.Property<decimal>("Price")
-                        .HasColumnType("numeric(10,2)");
                         .HasColumnType("decimal(10,2)");
 
                     b.Property<Guid>("RestaurantId")
@@ -130,6 +129,4 @@ namespace Menu_Service.Migrations
 #pragma warning restore 612, 618
         }
     }
-}
-}
 }

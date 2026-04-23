@@ -63,7 +63,18 @@ public class AuthController : ControllerBase
         });
     }
 
-    [Authorize]
+    [HttpPost("bootstrap-admin/{userId}")]
+public async Task<IActionResult> BootstrapAdmin(string userId)
+{
+    var result = await _authService.BootstrapAdminAsync(userId);
+    if (result == "no_admins_exist")
+        return Ok(new { message = "Admin role assigned successfully" });
+    if (result == "admins_already_exist")
+        return BadRequest(new { message = "Bootstrap not allowed: an admin already exists. Use assign-admin instead." });
+    return NotFound(new { message = "User not found" });
+}
+
+     [Authorize(Roles = "Admin")]
     [HttpGet("profile")]
     public async Task<IActionResult> GetProfile()
     {
@@ -74,7 +85,7 @@ public class AuthController : ControllerBase
         return Ok(profile);
     }
 
-    [Authorize]
+     [Authorize(Roles = "Admin")]
     [HttpPut("profile")]
     public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileRequest request)
     {
@@ -85,7 +96,6 @@ public class AuthController : ControllerBase
         return result ? Ok(new { message = "Profile updated successfully" }) : BadRequest(new { message = "Update failed" });
     }
 
-    [Authorize]
     [HttpPost("change-password")]
     public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDTO dto)
     {
@@ -96,7 +106,6 @@ public class AuthController : ControllerBase
         return result ? Ok(new { message = "Password changed successfully" }) : BadRequest(new { message = "Current password is incorrect" });
     }
 
-    [Authorize]
     [HttpDelete("deactivate")]
     public async Task<IActionResult> DeactivateAccount()
     {
@@ -106,8 +115,7 @@ public class AuthController : ControllerBase
         var result = await _authService.DeactivateAccountAsync(userId);
         return result ? Ok(new { message = "Account deactivated" }) : BadRequest(new { message = "Deactivation failed" });
     }
-
-    [Authorize(Roles = "Admin")]
+  [Authorize(Roles = "Admin")]
 [HttpPost("assign-admin/{userId}")]
 public async Task<IActionResult> AssignAdmin(string userId)
 {

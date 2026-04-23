@@ -7,6 +7,6 @@ namespace Auth_Service.Enums;
 public enum AllowedRegistrationRole
 {
     Customer = 1,
-    RestaurantOwner = 2,
-    DeliveryAgent = 3
+    RestaurantOwner = 2,   
+     DeliveryAgent = 3
 }
