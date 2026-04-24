@@ -4,13 +4,13 @@ namespace Order_Service.Interfaces;
 
 public interface IOrderService
 {
-    Task<OrderDto> PlaceOrderAsync(string customerId, PlaceOrderRequest req);
-    Task<OrderDto?> GetByIdAsync(Guid orderId, string callerId, string callerRole);
-    Task<List<OrderDto>> GetCustomerOrdersAsync(string customerId);
-    Task<List<OrderDto>> GetRestaurantOrdersAsync(Guid restaurantId);
-    Task<List<OrderDto>> GetAllOrdersAsync();
-    Task<OrderDto> UpdateStatusAsync(Guid orderId, UpdateStatusRequest req, string callerId, string callerRole);
-    Task<OrderDto> CancelOrderAsync(Guid orderId, string customerId);
-    Task<OrderDto> ReorderAsync(Guid orderId, string customerId);
-    Task<OrderDto> AssignAgentAsync(Guid orderId, AssignAgentRequest req);
+    Task<OrderDTOs> PlaceOrderAsync(string customerId, PlaceOrderRequest req);
+    Task<OrderDTOs?> GetByIdAsync(Guid orderId, string callerId, string callerRole);
+    Task<List<OrderDTOs>> GetCustomerOrdersAsync(string customerId);
+    Task<List<OrderDTOs>> GetRestaurantOrdersAsync(Guid restaurantId);
+    Task<List<OrderDTOs>> GetAllOrdersAsync();
+    Task<OrderDTOs> UpdateStatusAsync(Guid orderId, UpdateStatusRequest req, string callerId, string callerRole);
+    Task<OrderDTOs> CancelOrderAsync(Guid orderId, string customerId);
+    Task<OrderDTOs> ReorderAsync(Guid orderId, string customerId);
+    Task<OrderDTOs> AssignAgentAsync(Guid orderId, AssignAgentRequest req);
 }

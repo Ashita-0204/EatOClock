@@ -9,7 +9,7 @@ namespace Review_Service.Services;
 public class ReviewServiceImpl(AppDbContext db) : IReviewService
 {
     // UC-51 + UC-52
-    public async Task<(bool ok, string error, ReviewDTO? data)> SubmitReviewAsync(SubmitReviewDTO dto, string customerId)
+    public async Task<(bool ok, string error, ReviewDTOs? data)> SubmitReviewAsync(SubmitReviewDTO dto, string customerId)
     {
         if (await db.Reviews.AnyAsync(r => r.OrderId == dto.OrderId))
             return (false, "Review already exists for this order.", null);
@@ -31,7 +31,7 @@ public class ReviewServiceImpl(AppDbContext db) : IReviewService
     }
 
     // UC-53
-    public async Task<List<ReviewDTO>> GetRestaurantReviewsAsync(Guid restaurantId) =>
+    public async Task<List<ReviewDTOs>> GetRestaurantReviewsAsync(Guid restaurantId) =>
         await db.Reviews
             .Where(r => r.RestaurantId == restaurantId && r.IsActive)
             .OrderByDescending(r => r.CreatedAt)
@@ -39,14 +39,14 @@ public class ReviewServiceImpl(AppDbContext db) : IReviewService
             .ToListAsync();
 
     // UC-54
-    public async Task<List<ReviewDTO>> GetAgentReviewsAsync(Guid agentId) =>
+    public async Task<List<ReviewDTOs>> GetAgentReviewsAsync(Guid agentId) =>
         await db.Reviews
             .Where(r => r.AgentId == agentId && r.IsActive)
             .OrderByDescending(r => r.CreatedAt)
             .Select(r => Map(r))
             .ToListAsync();
 
-    public async Task<ReviewDTO?> GetOrderReviewAsync(Guid orderId, string customerId, bool isAdmin)
+    public async Task<ReviewDTOs?> GetOrderReviewAsync(Guid orderId, string customerId, bool isAdmin)
     {
         var review = await db.Reviews.FirstOrDefaultAsync(r => r.OrderId == orderId && r.IsActive);
         if (review == null) return null;
@@ -110,7 +110,7 @@ public class ReviewServiceImpl(AppDbContext db) : IReviewService
         };
     }
 
-    private static ReviewDTO Map(Review r) => new()
+    private static ReviewDTOs Map(Review r) => new()
     {
         ReviewId       = r.ReviewId,
         OrderId        = r.OrderId,

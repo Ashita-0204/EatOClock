@@ -10,16 +10,16 @@ namespace DeliveryAgent_Service.Services;
 
 public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : IAgentService
 {
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // -- Helpers --------------------------------------------------------------
 
-    private static AgentDto ToDto(DeliveryAgent a) => new(
+    private static AgentDTOs ToDto(DeliveryAgent a) => new(
         a.AgentId, a.UserId, a.FullName, a.Phone, a.Email,
         a.VehicleType.ToString(), a.VehicleNumber,
         a.CurrentLatitude, a.CurrentLongitude,
         a.IsAvailable, a.IsVerified,
         a.AverageRating, a.TotalDeliveries, a.TotalEarnings);
 
-    private static DeliveryRecordDto ToDto(DeliveryRecord d) => new(
+    private static DeliveryRecordDTO ToDto(DeliveryRecord d) => new(
         d.DeliveryId, d.OrderId, d.PickupAddress, d.DeliveryAddress,
         d.EarningsForDelivery, d.Status.ToString(), d.Rating,
         d.AssignedAt, d.PickedUpAt, d.DeliveredAt);
@@ -36,9 +36,9 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return R * 2 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1 - a));
     }
 
-    // ── UC-43: Register ───────────────────────────────────────────────────────
+    // -- UC-43: Register -------------------------------------------------------
 
-    public async Task<ApiResponse<AgentDto>> RegisterAsync(string userId, RegisterAgentRequest req)
+    public async Task<ApiResponse<AgentDTOs>> RegisterAsync(string userId, RegisterAgentRequest req)
     {
         if (await db.DeliveryAgents.AnyAsync(a => a.UserId == userId))
             return new(false, "Agent already registered.", null);
@@ -58,9 +58,9 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Registered successfully. Await admin verification.", ToDto(agent));
     }
 
-    // ── UC-43 / Get profile ───────────────────────────────────────────────────
+    // -- UC-43 / Get profile ---------------------------------------------------
 
-    public async Task<ApiResponse<AgentDto>> GetByIdAsync(Guid agentId)
+    public async Task<ApiResponse<AgentDTOs>> GetByIdAsync(Guid agentId)
     {
         var a = await db.DeliveryAgents.FindAsync(agentId);
         return a is null
@@ -68,7 +68,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
             : new(true, null, ToDto(a));
     }
 
-    public async Task<ApiResponse<AgentDto>> GetByUserIdAsync(string userId)
+    public async Task<ApiResponse<AgentDTOs>> GetByUserIdAsync(string userId)
     {
         var a = await db.DeliveryAgents.FirstOrDefaultAsync(x => x.UserId == userId);
         return a is null
@@ -76,7 +76,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
             : new(true, null, ToDto(a));
     }
 
-    // ── UC-44: Admin verifies agent ───────────────────────────────────────────
+    // -- UC-44: Admin verifies agent -------------------------------------------
 
     public async Task<ApiResponse<bool>> VerifyAsync(Guid agentId)
     {
@@ -88,7 +88,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Agent verified.", true);
     }
 
-    // ── UC-45: Toggle availability ────────────────────────────────────────────
+    // -- UC-45: Toggle availability --------------------------------------------
 
     public async Task<ApiResponse<bool>> ToggleAvailabilityAsync(Guid agentId, string userId)
     {
@@ -101,7 +101,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, $"Now {(a.IsAvailable ? "online" : "offline")}.", a.IsAvailable);
     }
 
-    // ── UC-47: Update GPS location ────────────────────────────────────────────
+    // -- UC-47: Update GPS location --------------------------------------------
 
     public async Task<ApiResponse<bool>> UpdateLocationAsync(Guid agentId, string userId, UpdateLocationRequest req)
     {
@@ -124,9 +124,9 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Location updated.", true);
     }
 
-    // ── System: Assign order to agent ─────────────────────────────────────────
+    // -- System: Assign order to agent -----------------------------------------
 
-    public async Task<ApiResponse<DeliveryRecordDto>> AssignOrderAsync(Guid agentId, AssignOrderRequest req)
+    public async Task<ApiResponse<DeliveryRecordDTO>> AssignOrderAsync(Guid agentId, AssignOrderRequest req)
     {
         var a = await db.DeliveryAgents.FindAsync(agentId);
         if (a is null) return new(false, "Agent not found.", null);
@@ -148,7 +148,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Order assigned.", ToDto(record));
     }
 
-    // ── UC-48: Mark picked up ─────────────────────────────────────────────────
+    // -- UC-48: Mark picked up -------------------------------------------------
 
     public async Task<ApiResponse<bool>> MarkPickedUpAsync(Guid agentId, string userId, Guid orderId)
     {
@@ -169,7 +169,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Marked as picked up.", true);
     }
 
-    // ── UC-48: Mark delivered ─────────────────────────────────────────────────
+    // -- UC-48: Mark delivered -------------------------------------------------
 
     public async Task<ApiResponse<bool>> MarkDeliveredAsync(Guid agentId, string userId, Guid orderId)
     {
@@ -196,9 +196,9 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Marked as delivered.", true);
     }
 
-    // ── UC-46: View assigned orders ───────────────────────────────────────────
+    // -- UC-46: View assigned orders -------------------------------------------
 
-    public async Task<ApiResponse<List<DeliveryRecordDto>>> GetAssignedOrdersAsync(Guid agentId, string userId)
+    public async Task<ApiResponse<List<DeliveryRecordDTO>>> GetAssignedOrdersAsync(Guid agentId, string userId)
     {
         var agent = await db.DeliveryAgents.FindAsync(agentId);
         if (agent is null || agent.UserId != userId) return new(false, "Not found.", null);
@@ -212,9 +212,9 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, null, records);
     }
 
-    // ── UC-49: View earnings ──────────────────────────────────────────────────
+    // -- UC-49: View earnings --------------------------------------------------
 
-    public async Task<ApiResponse<List<DeliveryRecordDto>>> GetEarningsAsync(Guid agentId, string userId)
+    public async Task<ApiResponse<List<DeliveryRecordDTO>>> GetEarningsAsync(Guid agentId, string userId)
     {
         var agent = await db.DeliveryAgents.FindAsync(agentId);
         if (agent is null || agent.UserId != userId) return new(false, "Not found.", null);
@@ -228,9 +228,9 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, null, records);
     }
 
-    // ── UC-50: Geo proximity lookup ───────────────────────────────────────────
+    // -- UC-50: Geo proximity lookup -------------------------------------------
 
-    public async Task<ApiResponse<List<NearbyAgentDto>>> GetNearbyAgentsAsync(double lat, double lng, double radiusKm)
+    public async Task<ApiResponse<List<NearbyAgentDTO>>> GetNearbyAgentsAsync(double lat, double lng, double radiusKm)
     {
         var agents = await db.DeliveryAgents
             .Where(a => a.IsAvailable && a.IsVerified
@@ -245,7 +245,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
             })
             .Where(x => x.Dist <= radiusKm)
             .OrderBy(x => x.Dist)
-            .Select(x => new NearbyAgentDto(
+            .Select(x => new NearbyAgentDTO(
                 x.Agent.AgentId, x.Agent.UserId, x.Agent.FullName,
                 x.Agent.VehicleType.ToString(),
                 x.Agent.CurrentLatitude!.Value, x.Agent.CurrentLongitude!.Value,
@@ -255,7 +255,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, null, nearby);
     }
 
-    // ── System: Update rating ─────────────────────────────────────────────────
+    // -- System: Update rating -------------------------------------------------
 
     public async Task<ApiResponse<bool>> UpdateRatingAsync(Guid agentId, RateDeliveryRequest req)
     {

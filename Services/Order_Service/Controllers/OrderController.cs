@@ -21,7 +21,7 @@ public class OrderController : ControllerBase
     private string CallerRole =>
         User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
 
-    // UC-29: Place order
+    //Place order
     [Authorize(Roles = "Customer,Admin")]
     [HttpPost]
     public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderRequest req)
@@ -30,7 +30,7 @@ public class OrderController : ControllerBase
         {
             var order = await _svc.PlaceOrderAsync(CallerId, req);
             return CreatedAtAction(nameof(GetById), new { id = order.OrderId },
-                new ApiResponse<OrderDto>(true, "Order placed.", order));
+                new ApiResponse<OrderDTOs>(true, "Order placed.", order));
         }
         catch (InvalidOperationException ex)
         {
@@ -38,7 +38,7 @@ public class OrderController : ControllerBase
         }
     }
 
-    // UC-30: Get order by ID
+    //Get order by ID
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
@@ -46,7 +46,7 @@ public class OrderController : ControllerBase
         {
             var order = await _svc.GetByIdAsync(id, CallerId, CallerRole);
             if (order == null) return NotFound(new ApiResponse<object>(false, "Not found.", null));
-            return Ok(new ApiResponse<OrderDto>(true, null, order));
+            return Ok(new ApiResponse<OrderDTOs>(true, null, order));
         }
         catch (UnauthorizedAccessException ex)
         {
@@ -58,25 +58,25 @@ public class OrderController : ControllerBase
         }
     }
 
-    // UC-32: Customer order history
+    //  Customer order history
     [Authorize(Roles = "Customer,Admin")]
     [HttpGet("customer")]
     public async Task<IActionResult> GetMyOrders()
     {
         var orders = await _svc.GetCustomerOrdersAsync(CallerId);
-        return Ok(new ApiResponse<List<OrderDto>>(true, null, orders));
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
     }
 
-    // UC-34: Restaurant orders
+    //  Restaurant orders
     [HttpGet("restaurant/{rId:guid}")]
     [Authorize(Roles = "RestaurantOwner,Admin")]
     public async Task<IActionResult> GetRestaurantOrders(Guid rId)
     {
         var orders = await _svc.GetRestaurantOrdersAsync(rId);
-        return Ok(new ApiResponse<List<OrderDto>>(true, null, orders));
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
     }
 
-    // UC-30/34: Update status
+    //  Update status
     [Authorize(Roles = "RestaurantOwner,Admin")]
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusRequest req)
@@ -84,7 +84,7 @@ public class OrderController : ControllerBase
         try
         {
             var order = await _svc.UpdateStatusAsync(id, req, CallerId, CallerRole);
-            return Ok(new ApiResponse<OrderDto>(true, "Status updated.", order));
+            return Ok(new ApiResponse<OrderDTOs>(true, "Status updated.", order));
         }
         catch (InvalidOperationException ex)
         {
@@ -96,7 +96,7 @@ public class OrderController : ControllerBase
         }
     }
 
-    // UC-31: Cancel order
+    //  Cancel order
     [HttpPut("{id:guid}/cancel")]
     [Authorize(Roles = "Customer,Admin")]
     public async Task<IActionResult> CancelOrder(Guid id, [FromBody] CancelOrderRequest req)
@@ -104,7 +104,7 @@ public class OrderController : ControllerBase
         try
         {
             var order = await _svc.CancelOrderAsync(id, CallerId);
-            return Ok(new ApiResponse<OrderDto>(true, "Order cancelled.", order));
+            return Ok(new ApiResponse<OrderDTOs>(true, "Order cancelled.", order));
         }
         catch (InvalidOperationException ex)
         {
@@ -120,7 +120,7 @@ public class OrderController : ControllerBase
         }
     }
 
-    // UC-33: Reorder
+    //  Reorder
     [HttpPost("{id:guid}/reorder")]
     [Authorize(Roles = "Customer,Admin")]
     public async Task<IActionResult> Reorder(Guid id)
@@ -129,7 +129,7 @@ public class OrderController : ControllerBase
         {
             var order = await _svc.ReorderAsync(id, CallerId);
             return CreatedAtAction(nameof(GetById), new { id = order.OrderId },
-                new ApiResponse<OrderDto>(true, "Reorder placed.", order));
+                new ApiResponse<OrderDTOs>(true, "Reorder placed.", order));
         }
         catch (UnauthorizedAccessException)
         {
@@ -141,7 +141,7 @@ public class OrderController : ControllerBase
         }
     }
 
-    // UC-36: Assign delivery agent (internal/system)
+    //  Assign delivery agent (internal/system)
     [HttpPut("{id:guid}/assign-agent")]
     [Authorize(Roles = "Admin,RestaurantOwner")]
     public async Task<IActionResult> AssignAgent(Guid id, [FromBody] AssignAgentRequest req)
@@ -149,7 +149,7 @@ public class OrderController : ControllerBase
         try
         {
             var order = await _svc.AssignAgentAsync(id, req);
-            return Ok(new ApiResponse<OrderDto>(true, "Agent assigned.", order));
+            return Ok(new ApiResponse<OrderDTOs>(true, "Agent assigned.", order));
         }
         catch (KeyNotFoundException ex)
         {
@@ -157,12 +157,12 @@ public class OrderController : ControllerBase
         }
     }
 
-    // UC-35: Admin — all orders
+    //  Admin - all orders
     [HttpGet("all")]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> GetAll()
     {
         var orders = await _svc.GetAllOrdersAsync();
-        return Ok(new ApiResponse<List<OrderDto>>(true, null, orders));
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
     }
 }

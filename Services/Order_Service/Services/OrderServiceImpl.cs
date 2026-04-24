@@ -12,13 +12,13 @@ public class OrderServiceImpl : IOrderService
 
     public OrderServiceImpl(AppDbContext db) => _db = db;
 
-    // ─── helpers ──────────────────────────────────────────────────────────
+    // --- helpers ----------------------------------------------------------
 
-    private static OrderDto ToDto(Order o) => new(
+    private static OrderDTOs ToDto(Order o) => new(
         o.OrderId, o.CustomerId, o.RestaurantId, o.DeliveryAgentId,
         o.TotalAmount, o.Discount, o.FinalAmount, o.ModeOfPayment,
         o.Status.ToString(), o.DeliveryAddress, o.Notes, o.CancellationReason,
-        o.Items.Select(i => new OrderItemDto(
+        o.Items.Select(i => new OrderItemDTO(
             i.OrderItemId, i.MenuItemId, i.Name, i.Price, i.Quantity,
             i.Customization, i.Price * i.Quantity)).ToList(),
         o.CreatedAt, o.UpdatedAt);
@@ -27,9 +27,9 @@ public class OrderServiceImpl : IOrderService
         await _db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.OrderId == id)
         ?? throw new KeyNotFoundException("Order not found.");
 
-    // ─── UC-29: Place order ────────────────────────────────────────────────
+    // --- UC-29: Place order ------------------------------------------------
 
-    public async Task<OrderDto> PlaceOrderAsync(string customerId, PlaceOrderRequest req)
+    public async Task<OrderDTOs> PlaceOrderAsync(string customerId, PlaceOrderRequest req)
     {
         if (req.Items == null || req.Items.Count == 0)
             throw new InvalidOperationException("Order must have at least one item.");
@@ -38,7 +38,7 @@ public class OrderServiceImpl : IOrderService
             throw new InvalidOperationException("ModeOfPayment must be COD or Online.");
 
         var total = req.Items.Sum(i => i.Price * i.Quantity);
-        // Simple discount placeholder — extend with promo logic as needed
+        // Simple discount placeholder - extend with promo logic as needed
         decimal discount = 0;
 
         var order = new Order
@@ -67,9 +67,9 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ─── UC-30: Get order by id ────────────────────────────────────────────
+    // --- UC-30: Get order by id --------------------------------------------
 
-    public async Task<OrderDto?> GetByIdAsync(Guid orderId, string callerId, string callerRole)
+    public async Task<OrderDTOs?> GetByIdAsync(Guid orderId, string callerId, string callerRole)
     {
         var order = await LoadAsync(orderId);
 
@@ -80,9 +80,9 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ─── UC-32: Order history ──────────────────────────────────────────────
+    // --- UC-32: Order history ----------------------------------------------
 
-    public async Task<List<OrderDto>> GetCustomerOrdersAsync(string customerId)
+    public async Task<List<OrderDTOs>> GetCustomerOrdersAsync(string customerId)
     {
         var orders = await _db.Orders.Include(o => o.Items)
             .Where(o => o.CustomerId == customerId)
@@ -91,9 +91,9 @@ public class OrderServiceImpl : IOrderService
         return orders.Select(ToDto).ToList();
     }
 
-    // ─── UC-34: Restaurant orders ──────────────────────────────────────────
+    // --- UC-34: Restaurant orders ------------------------------------------
 
-    public async Task<List<OrderDto>> GetRestaurantOrdersAsync(Guid restaurantId)
+    public async Task<List<OrderDTOs>> GetRestaurantOrdersAsync(Guid restaurantId)
     {
         var orders = await _db.Orders.Include(o => o.Items)
             .Where(o => o.RestaurantId == restaurantId)
@@ -102,9 +102,9 @@ public class OrderServiceImpl : IOrderService
         return orders.Select(ToDto).ToList();
     }
 
-    // ─── UC-35: Admin all orders ───────────────────────────────────────────
+    // --- UC-35: Admin all orders -------------------------------------------
 
-    public async Task<List<OrderDto>> GetAllOrdersAsync()
+    public async Task<List<OrderDTOs>> GetAllOrdersAsync()
     {
         var orders = await _db.Orders.Include(o => o.Items)
             .OrderByDescending(o => o.CreatedAt)
@@ -112,9 +112,9 @@ public class OrderServiceImpl : IOrderService
         return orders.Select(ToDto).ToList();
     }
 
-    // ─── UC-30/34: Update status ───────────────────────────────────────────
+    // --- UC-30/34: Update status -------------------------------------------
 
-    public async Task<OrderDto> UpdateStatusAsync(Guid orderId, UpdateStatusRequest req, string callerId, string callerRole)
+    public async Task<OrderDTOs> UpdateStatusAsync(Guid orderId, UpdateStatusRequest req, string callerId, string callerRole)
     {
         var order = await LoadAsync(orderId);
 
@@ -142,9 +142,9 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ─── UC-31: Cancel order ───────────────────────────────────────────────
+    // --- UC-31: Cancel order -----------------------------------------------
 
-    public async Task<OrderDto> CancelOrderAsync(Guid orderId, string customerId)
+    public async Task<OrderDTOs> CancelOrderAsync(Guid orderId, string customerId)
     {
         var order = await LoadAsync(orderId);
 
@@ -160,9 +160,9 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ─── UC-33: Reorder ───────────────────────────────────────────────────
+    // --- UC-33: Reorder ---------------------------------------------------
 
-    public async Task<OrderDto> ReorderAsync(Guid originalOrderId, string customerId)
+    public async Task<OrderDTOs> ReorderAsync(Guid originalOrderId, string customerId)
     {
         var original = await LoadAsync(originalOrderId);
 
@@ -181,9 +181,9 @@ public class OrderServiceImpl : IOrderService
         return await PlaceOrderAsync(customerId, req);
     }
 
-    // ─── UC-36: Assign agent ───────────────────────────────────────────────
+    // --- UC-36: Assign agent -----------------------------------------------
 
-    public async Task<OrderDto> AssignAgentAsync(Guid orderId, AssignAgentRequest req)
+    public async Task<OrderDTOs> AssignAgentAsync(Guid orderId, AssignAgentRequest req)
     {
         var order = await LoadAsync(orderId);
         order.DeliveryAgentId = req.DeliveryAgentId;

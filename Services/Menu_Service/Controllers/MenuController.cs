@@ -17,7 +17,7 @@ public class MenuController : ControllerBase
     private string OwnerId => User.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? User.FindFirstValue("sub") ?? string.Empty;
 
-    // ── Categories ─────────────────────────────────────────
+    // -- Categories -----------------------------------------
 
     /// <summary>Add a new menu category for a restaurant</summary>
     [HttpPost("category")]
@@ -44,7 +44,7 @@ public class MenuController : ControllerBase
         return Ok(result);
     }
 
-    // ── Items ──────────────────────────────────────────────
+    // -- Items ----------------------------------------------
 
     /// <summary>Add a new menu item</summary>
     [HttpPost("item")]

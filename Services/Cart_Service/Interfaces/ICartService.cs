@@ -4,11 +4,11 @@ namespace Cart_Service.Interfaces;
 
 public interface ICartService
 {
-    Task<CartDto?> GetCartAsync(string customerId);
-    Task<CartDto> AddItemAsync(string customerId, AddItemRequest req);
-    Task<CartDto> UpdateQtyAsync(string customerId, Guid itemId, int qty);
-    Task<CartDto> RemoveItemAsync(string customerId, Guid itemId);
+    Task<CartDTOs?> GetCartAsync(string customerId);
+    Task<CartDTOs> AddItemAsync(string customerId, AddItemRequest req);
+    Task<CartDTOs> UpdateQtyAsync(string customerId, Guid itemId, int qty);
+    Task<CartDTOs> RemoveItemAsync(string customerId, Guid itemId);
     Task ClearCartAsync(string customerId);
-    Task<CartDto> ApplyPromoAsync(string customerId, string promoCode);
-    Task<CartDto> SwitchRestaurantAsync(string customerId, Guid newRestaurantId);
+    Task<CartDTOs> ApplyPromoAsync(string customerId, string promoCode);
+    Task<CartDTOs> SwitchRestaurantAsync(string customerId, Guid newRestaurantId);
 }

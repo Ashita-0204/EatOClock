@@ -12,7 +12,7 @@ public class MenuService : IMenuService
 
     public MenuService(AppDbContext db) => _db = db;
 
-    // ── Categories ────────────────────────────────────────
+    // -- Categories ----------------------------------------
 
     public async Task<CategoryResponse> CreateCategoryAsync(CreateCategoryRequest req, string ownerId)
     {
@@ -38,7 +38,7 @@ public class MenuService : IMenuService
         return cats.Select(MapCategory).ToList();
     }
 
-    // ── Items ─────────────────────────────────────────────
+    // -- Items ---------------------------------------------
 
     public async Task<MenuItemResponse> CreateItemAsync(CreateMenuItemRequest req, string ownerId)
     {
@@ -95,7 +95,7 @@ public class MenuService : IMenuService
         return MapItem(item);
     }
 
-    // ── Mappers ───────────────────────────────────────────
+    // -- Mappers -------------------------------------------
 
     private static CategoryResponse MapCategory(MenuCategory c) => new(
         c.Id, c.RestaurantId, c.Name, c.Description, c.DisplayOrder, c.IsActive, c.CreatedAt,

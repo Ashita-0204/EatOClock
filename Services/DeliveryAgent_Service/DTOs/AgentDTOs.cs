@@ -2,63 +2,42 @@ using DeliveryAgent_Service.Models;
 
 namespace DeliveryAgent_Service.DTOs;
 
-// ─── Requests ───────────────────────────────────────────────────────────────
+public class AgentDTOs
+{
+    public Guid AgentId { get; set; }
+    public string UserId { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string VehicleType { get; set; } = string.Empty;
+    public string VehicleNumber { get; set; } = string.Empty;
+    public double? CurrentLatitude { get; set; }
+    public double? CurrentLongitude { get; set; }
+    public bool IsAvailable { get; set; }
+    public bool IsVerified { get; set; }
+    public double AverageRating { get; set; }
+    public int TotalDeliveries { get; set; }
+    public decimal TotalEarnings { get; set; }
+    public AgentDTOs() { }
 
-public record RegisterAgentRequest(
-    string FullName,
-    string Phone,
-    string Email,
-    VehicleType VehicleType,
-    string VehicleNumber);
-
-public record UpdateLocationRequest(double Latitude, double Longitude);
-
-public record AssignOrderRequest(
-    Guid OrderId,
-    string CustomerId,
-    string PickupAddress,
-    string DeliveryAddress,
-    decimal EarningsForDelivery);
-
-public record RateDeliveryRequest(Guid DeliveryId, int Rating, string? Note);
-
-// ─── Responses ──────────────────────────────────────────────────────────────
-
-public record AgentDto(
-    Guid AgentId,
-    string UserId,
-    string FullName,
-    string Phone,
-    string Email,
-    string VehicleType,
-    string VehicleNumber,
-    double? CurrentLatitude,
-    double? CurrentLongitude,
-    bool IsAvailable,
-    bool IsVerified,
-    double AverageRating,
-    int TotalDeliveries,
-    decimal TotalEarnings);
-
-public record DeliveryRecordDto(
-    Guid DeliveryId,
-    Guid OrderId,
-    string PickupAddress,
-    string DeliveryAddress,
-    decimal EarningsForDelivery,
-    string Status,
-    int? Rating,
-    DateTime AssignedAt,
-    DateTime? PickedUpAt,
-    DateTime? DeliveredAt);
-
-public record NearbyAgentDto(
-    Guid AgentId,
-    string UserId,
-    string FullName,
-    string VehicleType,
-    double Latitude,
-    double Longitude,
-    double DistanceKm);
-
-public record ApiResponse<T>(bool Success, string? Message, T? Data);
+    public AgentDTOs(Guid agentId, string userId, string fullName, string phone,
+        string email, string vehicleType, string vehicleNumber,
+        double? lat, double? lon, bool isAvailable, bool isVerified,
+        double avgRating, int totalDeliveries, decimal totalEarnings)
+    {
+        AgentId = agentId;
+        UserId = userId;
+        FullName = fullName;
+        Phone = phone;
+        Email = email;
+        VehicleType = vehicleType;
+        VehicleNumber = vehicleNumber;
+        CurrentLatitude = lat;
+        CurrentLongitude = lon;
+        IsAvailable = isAvailable;
+        IsVerified = isVerified;
+        AverageRating = avgRating;
+        TotalDeliveries = totalDeliveries;
+        TotalEarnings = totalEarnings;
+    }
+}

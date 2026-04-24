@@ -9,11 +9,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── EF Core (Postgres) ────────────────────────────────────────────────────
+// -- EF Core (Postgres) ----------------------------------------------------
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── JWT ───────────────────────────────────────────────────────────────────
+// -- JWT -------------------------------------------------------------------
 var jwt = builder.Configuration.GetSection("Jwt");
 var key = jwt["Key"] ?? throw new Exception("JWT Key missing");
 var issuer = jwt["Issuer"] ?? throw new Exception("JWT Issuer missing");
@@ -36,11 +36,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ── Services ──────────────────────────────────────────────────────────────
+// -- Services --------------------------------------------------------------
 builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
 builder.Services.AddControllers();
 
-// ── Swagger ───────────────────────────────────────────────────────────────
+// -- Swagger ---------------------------------------------------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -65,14 +65,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ── Auto Migration ────────────────────────────────────────────────────────
+// -- Auto Migration --------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
 
-// ── Middleware ────────────────────────────────────────────────────────────
+// -- Middleware ------------------------------------------------------------
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

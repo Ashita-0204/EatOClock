@@ -54,7 +54,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    // EnsureCreated creates tables directly from the model — no migration history needed.
+    // EnsureCreated creates tables directly from the model - no migration history needed.
     // Safe to use since this is a dedicated DB (EatOClock_Payment) with no shared schema.
     await db.Database.EnsureCreatedAsync();
 }

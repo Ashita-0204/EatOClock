@@ -10,11 +10,11 @@ using DeliveryAgent_Service.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── Database ──────────────────────────────────────────────────────────────────
+// -- Database ------------------------------------------------------------------
 builder.Services.AddDbContext<AppDbContext>(o =>
     o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
 
-// ── JWT Auth ──────────────────────────────────────────────────────────────────
+// -- JWT Auth ------------------------------------------------------------------
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
 builder.Services.AddAuthentication(o =>
@@ -51,15 +51,15 @@ builder.Services.AddAuthentication(o =>
 
 builder.Services.AddAuthorization();
 
-// ── SignalR ───────────────────────────────────────────────────────────────────
+// -- SignalR -------------------------------------------------------------------
 builder.Services.AddSignalR();
 
-// ── App Services ──────────────────────────────────────────────────────────────
+// -- App Services --------------------------------------------------------------
 builder.Services.AddScoped<IAgentService, AgentServiceImpl>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 
-// ── Swagger ───────────────────────────────────────────────────────────────────
+// -- Swagger -------------------------------------------------------------------
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "EatOClock DeliveryAgent API", Version = "v1" });
@@ -83,7 +83,7 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ── Migrate on startup ────────────────────────────────────────────────────────
+// -- Migrate on startup --------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();

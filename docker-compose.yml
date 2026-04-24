@@ -247,6 +247,41 @@ services:
     networks:
       - eatoclock_network
 
+  notification-service:
+    build:
+      context: ./Services/Notification_Service
+      dockerfile: Dockerfile
+    container_name: eatoclock_notification
+    restart: always
+    ports:
+      - "5009:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Notification;Username=postgres;Password=admin
+      - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
+      - Jwt__Issuer=EatOClock
+      - Jwt__Audience=EatOClockUsers
+      - Email__SenderName=EatOClock
+      - Email__SenderEmail=ashitavarshney37532@gmail.com
+      - Email__SmtpHost=smtp.gmail.com
+      - Email__SmtpPort=587
+      - Email__SmtpUser=${SMTP_USER}
+      - Email__SmtpPass=${SMTP_PASS}
+      - Twilio__AccountSid=${TWILIO_SID}
+      - Twilio__AuthToken=${TWILIO_TOKEN}
+      - Twilio__FromNumber=+12296334316
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - eatoclock_network
+
 volumes:
   postgres_data:
   redis_data:

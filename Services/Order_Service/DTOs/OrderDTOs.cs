@@ -2,55 +2,44 @@ using Order_Service.Models;
 
 namespace Order_Service.DTOs;
 
-// ─── Requests ───────────────────────────────────────────────────────────────
+public class OrderDTOs
+{
+    public Guid OrderId { get; set; }
+    public string CustomerId { get; set; } = string.Empty;
+    public Guid RestaurantId { get; set; }
+    public string? DeliveryAgentId { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal Discount { get; set; }
+    public decimal FinalAmount { get; set; }
+    public string ModeOfPayment { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty;
+    public string DeliveryAddress { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+    public string? CancellationReason { get; set; }
+    public List<OrderItemDTO> Items { get; set; } = new();
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+public OrderDTOs() { }
 
-public record PlaceOrderRequest(
-    Guid RestaurantId,
-    string ModeOfPayment,           // "COD" | "Online"
-    string DeliveryAddress,
-    string? Notes,
-    string? PromoCode,
-    List<OrderItemRequest> Items);
-
-public record OrderItemRequest(
-    Guid MenuItemId,
-    string Name,
-    decimal Price,
-    int Quantity,
-    string? Customization);
-
-public record UpdateStatusRequest(OrderStatus Status);
-
-public record CancelOrderRequest(string? Reason);
-
-public record AssignAgentRequest(string DeliveryAgentId);
-
-// ─── Responses ──────────────────────────────────────────────────────────────
-
-public record OrderItemDto(
-    Guid OrderItemId,
-    Guid MenuItemId,
-    string Name,
-    decimal Price,
-    int Quantity,
-    string? Customization,
-    decimal Subtotal);
-
-public record OrderDto(
-    Guid OrderId,
-    string CustomerId,
-    Guid RestaurantId,
-    string? DeliveryAgentId,
-    decimal TotalAmount,
-    decimal Discount,
-    decimal FinalAmount,
-    string ModeOfPayment,
-    string Status,
-    string DeliveryAddress,
-    string? Notes,
-    string? CancellationReason,
-    List<OrderItemDto> Items,
-    DateTime CreatedAt,
-    DateTime UpdatedAt);
-
-public record ApiResponse<T>(bool Success, string? Message, T? Data);
+    public OrderDTOs(Guid orderId, string customerId, Guid restaurantId, string? deliveryAgentId,
+        decimal totalAmount, decimal discount, decimal finalAmount, string modeOfPayment,
+        string status, string deliveryAddress, string? notes, string? cancellationReason,
+        List<OrderItemDTO> items, DateTime createdAt, DateTime updatedAt)
+    {
+        OrderId = orderId;
+        CustomerId = customerId;
+        RestaurantId = restaurantId;
+        DeliveryAgentId = deliveryAgentId;
+        TotalAmount = totalAmount;
+        Discount = discount;
+        FinalAmount = finalAmount;
+        ModeOfPayment = modeOfPayment;
+        Status = status;
+        DeliveryAddress = deliveryAddress;
+        Notes = notes;
+        CancellationReason = cancellationReason;
+        Items = items;
+        CreatedAt = createdAt;
+        UpdatedAt = updatedAt;
+    }
+}
