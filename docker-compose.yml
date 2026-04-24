@@ -54,7 +54,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -80,7 +80,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -105,7 +105,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -135,7 +135,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -161,7 +161,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -189,7 +189,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -214,7 +214,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -240,7 +240,7 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -275,7 +275,45 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - eatoclock_network
+
+  api-gateway:
+    build:
+      context: ./API-Gateway/EatOClock.Gateway
+      dockerfile: Dockerfile
+    container_name: eatoclock_gateway
+    restart: always
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+      - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
+      - Jwt__Issuer=EatOClock
+      - Jwt__Audience=EatOClockUsers
+      - Services__Auth=http://auth-service:8080
+      - Services__Restaurant=http://restaurant-service:8080
+      - Services__Menu=http://menu-service:8080
+      - Services__Cart=http://cart-service:8080
+      - Services__Order=http://order-service:8080
+      - Services__Payment=http://payment-service:8080
+      - Services__Notification=http://notification-service:8080
+      - Services__DeliveryAgent=http://delivery-agent-service:8080
+      - Services__Review=http://review-service:8080
+    depends_on:
+      - auth-service
+      - restaurant-service
+      - menu-service
+      - cart-service
+      - order-service
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
       interval: 30s
       timeout: 10s
       retries: 3
