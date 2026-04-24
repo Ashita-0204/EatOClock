@@ -14,11 +14,11 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// ── EF Core (Postgres) ────────────────────────────────────────────────────
+// -- EF Core (Postgres) ----------------------------------------------------
 builder.Services.AddDbContext<AppDbContext>(opt =>
     opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// ── Redis distributed cache (fallback safe) ───────────────────────────────
+// -- Redis distributed cache (fallback safe) -------------------------------
 var redisConn = builder.Configuration.GetConnectionString("Redis");
 var useRedis = false;
 
@@ -41,16 +41,16 @@ if (!string.IsNullOrWhiteSpace(redisConn))
 
 if (useRedis)
 {
-    Console.WriteLine("[Cache] Redis connected — using Redis distributed cache.");
+    Console.WriteLine("[Cache] Redis connected - using Redis distributed cache.");
     builder.Services.AddStackExchangeRedisCache(opt => opt.Configuration = redisConn);
 }
 else
 {
-    Console.WriteLine("[Cache] Redis unavailable — using in-memory cache.");
+    Console.WriteLine("[Cache] Redis unavailable - using in-memory cache.");
     builder.Services.AddDistributedMemoryCache();
 }
 
-// ── JWT CONFIG ────────────────────────────────────────────────────────────
+// -- JWT CONFIG ------------------------------------------------------------
 var jwtSection = builder.Configuration.GetSection("Jwt");
 
 var jwtKey = jwtSection["Key"];
@@ -97,11 +97,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
-// ── SERVICES ──────────────────────────────────────────────────────────────
+// -- SERVICES --------------------------------------------------------------
 builder.Services.AddScoped<ICartService, CartServiceImpl>();
 builder.Services.AddControllers();
 
-// ── SWAGGER ───────────────────────────────────────────────────────────────
+// -- SWAGGER ---------------------------------------------------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -139,14 +139,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// ── AUTO MIGRATION ────────────────────────────────────────────────────────
+// -- AUTO MIGRATION --------------------------------------------------------
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
 
-// ── MIDDLEWARE ───────────────────────────────────────────────────────────
+// -- MIDDLEWARE -----------------------------------------------------------
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

@@ -1,0 +1,168 @@
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Order_Service.DTOs;
+using Order_Service.Interfaces;
+
+namespace Order_Service.Controllers;
+
+[ApiController]
+[Route("api/v1/orders")]
+
+public class OrderController : ControllerBase
+{
+    private readonly IOrderService _svc;
+    public OrderController(IOrderService svc) => _svc = svc;
+
+    private string CallerId =>
+        User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? throw new UnauthorizedAccessException("User id claim missing.");
+
+    private string CallerRole =>
+        User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
+
+    //Place order
+    [Authorize(Roles = "Customer,Admin")]
+    [HttpPost]
+    public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderRequest req)
+    {
+        try
+        {
+            var order = await _svc.PlaceOrderAsync(CallerId, req);
+            return CreatedAtAction(nameof(GetById), new { id = order.OrderId },
+                new ApiResponse<OrderDTOs>(true, "Order placed.", order));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
+    //Get order by ID
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        try
+        {
+            var order = await _svc.GetByIdAsync(id, CallerId, CallerRole);
+            if (order == null) return NotFound(new ApiResponse<object>(false, "Not found.", null));
+            return Ok(new ApiResponse<OrderDTOs>(true, null, order));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Forbid(ex.Message);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
+    //  Customer order history
+    [Authorize(Roles = "Customer,Admin")]
+    [HttpGet("customer")]
+    public async Task<IActionResult> GetMyOrders()
+    {
+        var orders = await _svc.GetCustomerOrdersAsync(CallerId);
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
+    }
+
+    //  Restaurant orders
+    [HttpGet("restaurant/{rId:guid}")]
+    [Authorize(Roles = "RestaurantOwner,Admin")]
+    public async Task<IActionResult> GetRestaurantOrders(Guid rId)
+    {
+        var orders = await _svc.GetRestaurantOrdersAsync(rId);
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
+    }
+
+    //  Update status
+    [Authorize(Roles = "RestaurantOwner,Admin")]
+    [HttpPut("{id:guid}/status")]
+    public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusRequest req)
+    {
+        try
+        {
+            var order = await _svc.UpdateStatusAsync(id, req, CallerId, CallerRole);
+            return Ok(new ApiResponse<OrderDTOs>(true, "Status updated.", order));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>(false, ex.Message, null));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
+    //  Cancel order
+    [HttpPut("{id:guid}/cancel")]
+    [Authorize(Roles = "Customer,Admin")]
+    public async Task<IActionResult> CancelOrder(Guid id, [FromBody] CancelOrderRequest req)
+    {
+        try
+        {
+            var order = await _svc.CancelOrderAsync(id, CallerId);
+            return Ok(new ApiResponse<OrderDTOs>(true, "Order cancelled.", order));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>(false, ex.Message, null));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
+    //  Reorder
+    [HttpPost("{id:guid}/reorder")]
+    [Authorize(Roles = "Customer,Admin")]
+    public async Task<IActionResult> Reorder(Guid id)
+    {
+        try
+        {
+            var order = await _svc.ReorderAsync(id, CallerId);
+            return CreatedAtAction(nameof(GetById), new { id = order.OrderId },
+                new ApiResponse<OrderDTOs>(true, "Reorder placed.", order));
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return Forbid();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
+    //  Assign delivery agent (internal/system)
+    [HttpPut("{id:guid}/assign-agent")]
+    [Authorize(Roles = "Admin,RestaurantOwner")]
+    public async Task<IActionResult> AssignAgent(Guid id, [FromBody] AssignAgentRequest req)
+    {
+        try
+        {
+            var order = await _svc.AssignAgentAsync(id, req);
+            return Ok(new ApiResponse<OrderDTOs>(true, "Agent assigned.", order));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
+    //  Admin - all orders
+    [HttpGet("all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAll()
+    {
+        var orders = await _svc.GetAllOrdersAsync();
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
+    }
+}

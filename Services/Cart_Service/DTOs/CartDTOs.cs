@@ -1,40 +1,28 @@
 namespace Cart_Service.DTOs;
 
-// ─── Requests ───────────────────────────────────────────────────────────────
+public class CartDTOs
+{
+    public Guid CartId { get; set; }
+    public string CustomerId { get; set; } = string.Empty;
+    public Guid RestaurantId { get; set; }
+    public decimal TotalPrice { get; set; }
+    public decimal DiscountedTotal { get; set; }
+    public string? AppliedPromo { get; set; }
+    public List<CartItemDTO> Items { get; set; } = new();
+    public DateTime UpdatedAt { get; set; }
+    public CartDTOs() { }
 
-public record AddItemRequest(
-    Guid RestaurantId,
-    Guid MenuItemId,
-    string Name,
-    decimal Price,
-    int Quantity,
-    string? Customization = null);
-
-public record UpdateQtyRequest(int Quantity);
-
-public record ApplyPromoRequest(string PromoCode);
-
-public record SwitchRestaurantRequest(Guid NewRestaurantId);
-
-// ─── Responses ──────────────────────────────────────────────────────────────
-
-public record CartItemDto(
-    Guid ItemId,
-    Guid MenuItemId,
-    string Name,
-    decimal Price,
-    int Quantity,
-    string? Customization,
-    decimal Subtotal);
-
-public record CartDto(
-    Guid CartId,
-    string CustomerId,
-    Guid RestaurantId,
-    decimal TotalPrice,
-    decimal DiscountedTotal,
-    string? AppliedPromo,
-    List<CartItemDto> Items,
-    DateTime UpdatedAt);
-
-public record ApiResponse<T>(bool Success, string? Message, T? Data);
+    public CartDTOs(Guid cartId, string customerId, Guid restaurantId,
+        decimal totalPrice, decimal discountedTotal, string? appliedPromo,
+        List<CartItemDTO> items, DateTime updatedAt)
+    {
+        CartId = cartId;
+        CustomerId = customerId;
+        RestaurantId = restaurantId;
+        TotalPrice = totalPrice;
+        DiscountedTotal = discountedTotal;
+        AppliedPromo = appliedPromo;
+        Items = items;
+        UpdatedAt = updatedAt;
+    }
+}

@@ -8,7 +8,7 @@ namespace Menu_Service.Controllers;
 
 [ApiController]
 [Route("menu")]
-[Authorize]
+
 public class MenuController : ControllerBase
 {
     private readonly IMenuService _menu;
@@ -17,7 +17,7 @@ public class MenuController : ControllerBase
     private string OwnerId => User.FindFirstValue(ClaimTypes.NameIdentifier)
         ?? User.FindFirstValue("sub") ?? string.Empty;
 
-    // ── Categories ─────────────────────────────────────────
+    // -- Categories -----------------------------------------
 
     /// <summary>Add a new menu category for a restaurant</summary>
     [HttpPost("category")]
@@ -35,6 +35,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Get all categories (with items) for a restaurant</summary>
+    [Authorize(Roles = "Customer,RestaurantOwner,Admin")]
     [HttpGet("category/{restaurantId:guid}")]
     [AllowAnonymous]
     public async Task<IActionResult> GetCategories(Guid restaurantId)
@@ -43,10 +44,11 @@ public class MenuController : ControllerBase
         return Ok(result);
     }
 
-    // ── Items ──────────────────────────────────────────────
+    // -- Items ----------------------------------------------
 
     /// <summary>Add a new menu item</summary>
     [HttpPost("item")]
+    [Authorize(Roles = "Customer,Admin")]
     public async Task<IActionResult> CreateItem([FromBody] CreateMenuItemRequest request)
     {
         try
@@ -65,6 +67,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Update a menu item</summary>
+    [Authorize(Roles = "Customer,Admin")]
     [HttpPut("item/{itemId:guid}")]
     public async Task<IActionResult> UpdateItem(Guid itemId, [FromBody] UpdateMenuItemRequest request)
     {
@@ -84,6 +87,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Delete a menu item</summary>
+     [Authorize(Roles = "Customer,Admin")]
     [HttpDelete("item/{itemId:guid}")]
     public async Task<IActionResult> DeleteItem(Guid itemId)
     {
@@ -99,6 +103,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Toggle item availability on/off</summary>
+   [Authorize(Roles = "Customer,Admin")]
     [HttpPatch("item/{itemId:guid}/availability")]
     public async Task<IActionResult> ToggleAvailability(Guid itemId)
     {

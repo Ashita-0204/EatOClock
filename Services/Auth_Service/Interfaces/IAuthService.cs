@@ -24,4 +24,5 @@ public interface IAuthService
     Task<bool> ChangePasswordAsync(string userId, ChangePasswordDTO dto);
     Task<bool> DeactivateAccountAsync(string userId);
     Task<bool> AssignAdminAsync(string userId);
+    Task<string> BootstrapAdminAsync(string userId);
 }

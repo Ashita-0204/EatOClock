@@ -38,8 +38,7 @@ public class AuthServiceImpl : IAuthService
         return new AuthResult { Success = false, Message = "Email already registered" };
 
      // "Customer", "RestaurantOwner", or "DeliveryAgent"
-var roleName = dto.Role.ToString();
-    var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
+var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
 
     // Ensure role exists (seeded, but safety check)
     if (!await _roleManager.RoleExistsAsync(roleName))
@@ -222,7 +221,7 @@ var roleName = dto.Role.ToString();
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: DateTime.UtcNow.AddHours(48),
             signingCredentials: creds
         );
 
@@ -233,6 +232,20 @@ var roleName = dto.Role.ToString();
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
     }
+
+    public async Task<string> BootstrapAdminAsync(string userId)
+{
+    // Lock the endpoint once any admin exists
+    var adminsExist = await _userManager.GetUsersInRoleAsync("Admin");
+    if (adminsExist.Count > 0)
+        return "admins_already_exist";
+
+    var user = await _userManager.FindByIdAsync(userId);
+    if (user == null) return "user_not_found";
+
+    await _userManager.AddToRoleAsync(user, "Admin");
+    return "no_admins_exist";
+}
 public async Task<bool> AssignAdminAsync(string userId)
 {
     var user = await _userManager.FindByIdAsync(userId);

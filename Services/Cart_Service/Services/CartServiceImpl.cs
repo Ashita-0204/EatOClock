@@ -13,7 +13,7 @@ public class CartServiceImpl : ICartService
     private readonly AppDbContext _db;
     private readonly IDistributedCache _cache;
 
-    // Redis TTL — 30 minutes idle expiry
+    // Redis TTL - 30 minutes idle expiry
     private static readonly DistributedCacheEntryOptions _cacheOpts =
         new() { SlidingExpiration = TimeSpan.FromMinutes(30) };
 
@@ -23,17 +23,17 @@ public class CartServiceImpl : ICartService
         _cache = cache;
     }
 
-    // ─── helpers ────────────────────────────────────────────────────────────
+    // --- helpers ------------------------------------------------------------
 
     private static string CacheKey(string customerId) => $"cart:{customerId}";
 
-    private static CartDto ToDto(Cart cart, decimal? discountedTotal = null, string? promo = null)
+    private static CartDTOs ToDto(Cart cart, decimal? discountedTotal = null, string? promo = null)
     {
-        var items = cart.Items.Select(i => new CartItemDto(
+        var items = cart.Items.Select(i => new CartItemDTO(
             i.ItemId, i.MenuItemId, i.Name, i.Price, i.Quantity, i.Customization,
             i.Price * i.Quantity)).ToList();
 
-        return new CartDto(cart.CartId, cart.CustomerId, cart.RestaurantId,
+        return new CartDTOs(cart.CartId, cart.CustomerId, cart.RestaurantId,
             cart.TotalPrice, discountedTotal ?? cart.TotalPrice, promo, items, cart.UpdatedAt);
     }
 
@@ -47,14 +47,14 @@ public class CartServiceImpl : ICartService
     private void RecalcTotal(Cart cart) =>
         cart.TotalPrice = cart.Items.Sum(i => i.Price * i.Quantity);
 
-    // ─── public methods ──────────────────────────────────────────────────────
+    // --- public methods ------------------------------------------------------
 
-    public async Task<CartDto?> GetCartAsync(string customerId)
+    public async Task<CartDTOs?> GetCartAsync(string customerId)
     {
         // try cache first
         var cached = await _cache.GetStringAsync(CacheKey(customerId));
         if (cached != null)
-            return JsonSerializer.Deserialize<CartDto>(cached);
+            return JsonSerializer.Deserialize<CartDTOs>(cached);
 
         var cart = await LoadFromDbAsync(customerId);
         if (cart == null) return null;
@@ -64,7 +64,7 @@ public class CartServiceImpl : ICartService
         return dto;
     }
 
-    public async Task<CartDto> AddItemAsync(string customerId, AddItemRequest req)
+    public async Task<CartDTOs> AddItemAsync(string customerId, AddItemRequest req)
     {
         var cart = await LoadFromDbAsync(customerId);
 
@@ -104,7 +104,7 @@ public class CartServiceImpl : ICartService
         return ToDto(cart);
     }
 
-    public async Task<CartDto> UpdateQtyAsync(string customerId, Guid itemId, int qty)
+    public async Task<CartDTOs> UpdateQtyAsync(string customerId, Guid itemId, int qty)
     {
         var cart = await LoadFromDbAsync(customerId)
                    ?? throw new KeyNotFoundException("Cart not found.");
@@ -125,7 +125,7 @@ public class CartServiceImpl : ICartService
         return ToDto(cart);
     }
 
-    public async Task<CartDto> RemoveItemAsync(string customerId, Guid itemId)
+    public async Task<CartDTOs> RemoveItemAsync(string customerId, Guid itemId)
     {
         var cart = await LoadFromDbAsync(customerId)
                    ?? throw new KeyNotFoundException("Cart not found.");
@@ -153,7 +153,7 @@ public class CartServiceImpl : ICartService
         await InvalidateCacheAsync(customerId);
     }
 
-    public async Task<CartDto> ApplyPromoAsync(string customerId, string promoCode)
+    public async Task<CartDTOs> ApplyPromoAsync(string customerId, string promoCode)
     {
         var cart = await LoadFromDbAsync(customerId)
                    ?? throw new KeyNotFoundException("Cart not found.");
@@ -168,7 +168,7 @@ public class CartServiceImpl : ICartService
         return ToDto(cart, discounted, promo.Code);
     }
 
-    public async Task<CartDto> SwitchRestaurantAsync(string customerId, Guid newRestaurantId)
+    public async Task<CartDTOs> SwitchRestaurantAsync(string customerId, Guid newRestaurantId)
     {
         await ClearCartAsync(customerId);
 
