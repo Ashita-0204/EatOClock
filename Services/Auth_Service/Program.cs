@@ -15,11 +15,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Auth_Service.Interfaces;
 
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
+    options.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
+        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "auth_custom")));
 
 builder.Services.AddIdentity<User, IdentityRole>()
     .AddEntityFrameworkStores<AppDbContext>()
@@ -46,6 +46,26 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
+
+// ── CORS ─────────────────────────────────────────────────────────────────────
+// Allow calls from the Angular dev server and from the API gateway.
+// Extend AllowedOrigins in appsettings for production.
+var corsOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>()
+    ?? new[] { "http://localhost:4200" };
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy.WithOrigins(corsOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+// ─────────────────────────────────────────────────────────────────────────────
 
 builder.Services.AddScoped<IAuthService, AuthServiceImpl>();
 builder.Services.AddControllers();
@@ -91,24 +111,69 @@ using (var scope = app.Services.CreateScope())
     }
 
     // Seed default admin if none exists
-var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-const string adminEmail = "admin@eatoclock.com";
-const string adminPassword = "Admin@123456"; // change this after first login
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    const string adminEmail = "admin@eatoclock.com";
+    const string adminPassword = "Admin@123456";
 
-if (await userManager.FindByEmailAsync(adminEmail) == null)
-{
-    var adminUser = new User
+    var adminUser = await userManager.FindByEmailAsync(adminEmail);
+    if (adminUser == null)
     {
-        UserName = adminEmail,
-        Email = adminEmail,
-        FullName = "System Admin",
-        CreatedAt = DateTime.UtcNow,
-        IsActive = true
-    };
-    var createResult = await userManager.CreateAsync(adminUser, adminPassword);
-    if (createResult.Succeeded)
-        await userManager.AddToRoleAsync(adminUser, "Admin");
-}
+        adminUser = new User
+        {
+            UserName = adminEmail,
+            Email = adminEmail,
+            FullName = "System Admin",
+            CreatedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+        if (createResult.Succeeded)
+            await userManager.AddToRoleAsync(adminUser, "Admin");
+    }
+    else
+    {
+        // For development/recovery: ensure the password matches the hardcoded one
+        // If the existing user has a null security stamp (common in corrupted/imported data), set it first
+        if (string.IsNullOrEmpty(adminUser.SecurityStamp))
+        {
+            await userManager.UpdateSecurityStampAsync(adminUser);
+        }
+
+        var resetToken = await userManager.GeneratePasswordResetTokenAsync(adminUser);
+        await userManager.ResetPasswordAsync(adminUser, resetToken, adminPassword);
+    }
+
+    // Fix and normalize all existing users to ensure they can login
+    Console.WriteLine("Starting user normalization and security stamp fix...");
+    var allUsers = await userManager.Users.ToListAsync();
+    int fixedCount = 0;
+    foreach (var user in allUsers)
+    {
+        bool changed = false;
+        if (string.IsNullOrEmpty(user.SecurityStamp))
+        {
+            await userManager.UpdateSecurityStampAsync(user);
+            changed = true;
+        }
+        
+        // Ensure normalization is correct so they can be found by email/username
+        var normalizedEmail = userManager.NormalizeEmail(user.Email!);
+        var normalizedName = userManager.NormalizeName(user.UserName!);
+        
+        if (user.NormalizedEmail != normalizedEmail || user.NormalizedUserName != normalizedName)
+        {
+            user.NormalizedEmail = normalizedEmail;
+            user.NormalizedUserName = normalizedName;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            await userManager.UpdateAsync(user);
+            fixedCount++;
+        }
+    }
+    Console.WriteLine($"User normalization complete. Fixed {fixedCount} users.");
 }
 
 app.UseSwagger();
@@ -118,7 +183,8 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty;
 });
 
-
+// CORS must come before UseAuthentication/UseAuthorization
+app.UseCors("FrontendPolicy");
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));
 

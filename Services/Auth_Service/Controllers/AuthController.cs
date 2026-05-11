@@ -9,7 +9,7 @@ using Auth_Service.Interfaces;
 namespace Auth_Service.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -83,6 +83,15 @@ public async Task<IActionResult> BootstrapAdmin(string userId)
 
         var profile = await _authService.GetProfileAsync(userId);
         return Ok(profile);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("user/{userId}")]
+    public async Task<IActionResult> GetUserById(string userId)
+    {
+        var user = await _authService.GetUserByIdAsync(userId);
+        if (user == null) return NotFound();
+        return Ok(user);
     }
 
      [Authorize(Roles = "Admin")]

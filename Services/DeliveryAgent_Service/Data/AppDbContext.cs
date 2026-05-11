@@ -10,6 +10,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.HasDefaultSchema("delivery");
         mb.Entity<DeliveryAgent>(e =>
         {
             e.HasKey(a => a.AgentId);

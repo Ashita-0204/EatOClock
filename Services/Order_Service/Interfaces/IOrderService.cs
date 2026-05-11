@@ -9,8 +9,11 @@ public interface IOrderService
     Task<List<OrderDTOs>> GetCustomerOrdersAsync(string customerId);
     Task<List<OrderDTOs>> GetRestaurantOrdersAsync(Guid restaurantId);
     Task<List<OrderDTOs>> GetAllOrdersAsync();
+    Task<List<OrderDTOs>> GetAvailableOrdersAsync();
+    Task<List<OrderDTOs>> GetAgentOrdersAsync(string agentId);
     Task<OrderDTOs> UpdateStatusAsync(Guid orderId, UpdateStatusRequest req, string callerId, string callerRole);
     Task<OrderDTOs> CancelOrderAsync(Guid orderId, string customerId);
     Task<OrderDTOs> ReorderAsync(Guid orderId, string customerId);
     Task<OrderDTOs> AssignAgentAsync(Guid orderId, AssignAgentRequest req);
+    Task<OrderDTOs> ConfirmOrderAsync(Guid orderId);
 }

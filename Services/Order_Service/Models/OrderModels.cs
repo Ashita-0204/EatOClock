@@ -5,6 +5,7 @@ public class Order
     public Guid OrderId { get; set; } = Guid.NewGuid();
     public string CustomerId { get; set; } = string.Empty;
     public Guid RestaurantId { get; set; }
+    public string RestaurantName { get; set; } = string.Empty;
     public string? DeliveryAgentId { get; set; }
 
     public decimal TotalAmount { get; set; }

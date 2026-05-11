@@ -6,12 +6,17 @@ using Order_Service.Data;
 using Order_Service.Interfaces;
 using Order_Service.Services;
 using System.Text;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // -- EF Core (Postgres) ----------------------------------------------------
-builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        x => {
+            x.MigrationsHistoryTable("__EFMigrationsHistory", "orders");
+            x.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+        }));
 
 // -- JWT -------------------------------------------------------------------
 var jwt = builder.Configuration.GetSection("Jwt");
@@ -35,10 +40,26 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddHttpContextAccessor();
 
 // -- Services --------------------------------------------------------------
+builder.Services.AddHttpClient("NotificationService", client =>
+{
+    // Use the docker network hostname and port
+    client.BaseAddress = new Uri("http://notification-service:8080");
+});
+
+builder.Services.AddHttpClient("RestaurantService", client =>
+{
+    client.BaseAddress = new Uri("http://restaurant-service:8080");
+});
+
 builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 
 // -- Swagger ---------------------------------------------------------------
 builder.Services.AddEndpointsApiExplorer();
@@ -66,11 +87,13 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // -- Auto Migration --------------------------------------------------------
+/*
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
+*/
 
 // -- Middleware ------------------------------------------------------------
 app.UseSwagger();

@@ -35,7 +35,7 @@ public class RestaurantService : IRestaurantService
             OpeningTime = dto.OpeningTime,
             ClosingTime = dto.ClosingTime,
             OwnerId = ownerId,
-            IsApproved = false,
+            IsApproved = false, // Require Admin approval
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

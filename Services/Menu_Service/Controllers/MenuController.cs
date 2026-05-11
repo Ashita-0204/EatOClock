@@ -48,7 +48,7 @@ public class MenuController : ControllerBase
 
     /// <summary>Add a new menu item</summary>
     [HttpPost("item")]
-    [Authorize(Roles = "Customer,Admin")]
+    [Authorize(Roles = "RestaurantOwner,Admin")]
     public async Task<IActionResult> CreateItem([FromBody] CreateMenuItemRequest request)
     {
         try
@@ -67,7 +67,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Update a menu item</summary>
-    [Authorize(Roles = "Customer,Admin")]
+    [Authorize(Roles = "RestaurantOwner,Admin")]
     [HttpPut("item/{itemId:guid}")]
     public async Task<IActionResult> UpdateItem(Guid itemId, [FromBody] UpdateMenuItemRequest request)
     {
@@ -87,7 +87,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Delete a menu item</summary>
-     [Authorize(Roles = "Customer,Admin")]
+     [Authorize(Roles = "RestaurantOwner,Admin")]
     [HttpDelete("item/{itemId:guid}")]
     public async Task<IActionResult> DeleteItem(Guid itemId)
     {
@@ -103,7 +103,7 @@ public class MenuController : ControllerBase
     }
 
     /// <summary>Toggle item availability on/off</summary>
-   [Authorize(Roles = "Customer,Admin")]
+    [Authorize(Roles = "RestaurantOwner,Admin")]
     [HttpPatch("item/{itemId:guid}/availability")]
     public async Task<IActionResult> ToggleAvailability(Guid itemId)
     {

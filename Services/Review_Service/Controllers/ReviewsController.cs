@@ -22,12 +22,12 @@ public class ReviewsController(IReviewService svc) : ControllerBase
     }
 
     // UC-53: GET /api/v1/reviews/restaurant/{rId}
-    [HttpGet("restaurant/{rId:guid}"),Authorize(Roles = "Admin,Customer")]
+    [HttpGet("restaurant/{rId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner")]
     public async Task<IActionResult> RestaurantReviews(Guid rId) =>
         Ok(await svc.GetRestaurantReviewsAsync(rId));
 
     // UC-54: GET /api/v1/reviews/agent/{aId}
-    [HttpGet("agent/{aId:guid}"),Authorize(Roles = "Admin,Customer")]
+    [HttpGet("agent/{aId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner")]
     public async Task<IActionResult> AgentReviews(Guid aId) =>
         Ok(await svc.GetAgentReviewsAsync(aId));
 
@@ -56,7 +56,7 @@ public class ReviewsController(IReviewService svc) : ControllerBase
     }
 
     // UC-56: GET /api/v1/reviews/avg/restaurant/{rId}
-    [HttpGet("avg/restaurant/{rId:guid}"),Authorize(Roles = "Admin,Customer")]
+    [HttpGet("avg/restaurant/{rId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner")]
     public async Task<IActionResult> AvgRestaurant(Guid rId) =>
         Ok(await svc.GetAvgRestaurantRatingAsync(rId));
 

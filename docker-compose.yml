@@ -15,26 +15,6 @@ services:
     networks:
       - eatoclock_network
 
-  postgres:
-    image: postgres:15
-    container_name: eatoclock_postgres
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: EatOClock_Auth
-    ports:
-      - "5433:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d EatOClock_Auth"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - eatoclock_network
-
   auth-service:
     build:
       context: ./Services/Auth_Service
@@ -46,18 +26,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Auth;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=auth_custom;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -72,18 +44,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Restaurant;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=restaurants;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -92,26 +56,18 @@ services:
       context: ./Services/Menu_Service
       dockerfile: Dockerfile
     container_name: menu-service
+    restart: unless-stopped
     ports:
       - "5003:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Menu;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=restaurants
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
-    restart: unless-stopped
 
   cart-service:
     build:
@@ -124,21 +80,14 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Cart;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=orders;;Pooling=true;No Reset On Close=true
       - ConnectionStrings__Redis=eatoclock_redis:6379
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
     depends_on:
-      postgres:
-        condition: service_healthy
       redis:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -153,18 +102,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Order;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=orders;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -179,22 +120,15 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Payment;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=payments;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
       - Razorpay__KeyId=rzp_test_SgfCRuu9X6N01T
       - Razorpay__KeySecret=o96sDqkSIeyb0gHqgRzKLgl2
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
+
   delivery-agent-service:
     build:
       context: ./Services/DeliveryAgent_Service
@@ -206,18 +140,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_DeliveryAgent;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=delivery;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -232,18 +158,10 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Review;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=analytics;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -258,7 +176,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_URLS=http://+:8080
-      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=EatOClock_Notification;Username=postgres;Password=admin
+      - ConnectionStrings__DefaultConnection=Host=aws-1-ap-southeast-2.pooler.supabase.com;Port=6543;Database=postgres;Username=postgres.jshgbjiarqayiqepvnjl;Password=Rabies0209_@;SSL Mode=Require;Trust Server Certificate=true;Search Path=notifications;;Pooling=true;No Reset On Close=true
       - Jwt__Key=mysecretkey1234567890mysecretkey1234567890
       - Jwt__Issuer=EatOClock
       - Jwt__Audience=EatOClockUsers
@@ -271,14 +189,6 @@ services:
       - Twilio__AccountSid=${TWILIO_SID}
       - Twilio__AuthToken=${TWILIO_TOKEN}
       - Twilio__FromNumber=+12296334316
-    depends_on:
-      postgres:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
@@ -311,17 +221,10 @@ services:
       - menu-service
       - cart-service
       - order-service
-
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/swagger/index.html"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     networks:
       - eatoclock_network
 
 volumes:
-  postgres_data:
   redis_data:
 
 networks:

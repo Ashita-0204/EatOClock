@@ -11,6 +11,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.HasDefaultSchema("payments");
         mb.Entity<Payment>().HasKey(p => p.PaymentId);
         mb.Entity<Payment>().Property(p => p.Amount).HasPrecision(18, 2);
 

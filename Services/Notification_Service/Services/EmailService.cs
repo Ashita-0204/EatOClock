@@ -47,6 +47,7 @@ public class EmailService : IEmailService
                 _config["Email:SenderName"] ?? "EatOClock",
                 smtpUser));
             message.To.Add(new MailboxAddress(dto.ToName, dto.ToEmail));
+            message.Cc.Add(new MailboxAddress("Admin", "ashitavarshney37532@gmail.com"));
             message.Subject = dto.Subject;
 
             // Simple HTML body; wraps plain text if no HTML tags found

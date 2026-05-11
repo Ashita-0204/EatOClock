@@ -1,0 +1,9 @@
+﻿C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\Program.cs
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\obj\Debug\net8.0\EatOClock.Gateway.GlobalUsings.g.cs
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\obj\Debug\net8.0\.NETCoreApp,Version=v8.0.AssemblyAttributes.cs
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\obj\Debug\net8.0\EatOClock.Gateway.AssemblyInfo.cs
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\appsettings.Development.json
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\appsettings.json
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\Dockerfile
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\EatOClock.Gateway.http
+C:\Users\ashit\Desktop\Demo\EatOClock\API-Gateway\EatOClock.Gateway\Properties\launchSettings.json

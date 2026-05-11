@@ -84,16 +84,26 @@ public class ReviewServiceImpl(AppDbContext db) : IReviewService
     // UC-56
     public async Task<AvgRatingDTO> GetAvgRestaurantRatingAsync(Guid restaurantId)
     {
-        var reviews = await db.Reviews
-            .Where(r => r.RestaurantId == restaurantId && r.IsActive)
-            .Select(r => r.FoodRating)
-            .ToListAsync();
-
-        return new AvgRatingDTO
+        Console.WriteLine($"[Review_Service] Getting avg rating for restaurant: {restaurantId}");
+        try 
         {
-            AverageRating = reviews.Count == 0 ? 0 : Math.Round(reviews.Average(), 2),
-            TotalReviews  = reviews.Count
-        };
+            var reviews = await db.Reviews
+                .Where(r => r.RestaurantId == restaurantId && r.IsActive)
+                .Select(r => r.FoodRating)
+                .ToListAsync();
+            
+            Console.WriteLine($"[Review_Service] Found {reviews.Count} reviews for restaurant: {restaurantId}");
+            return new AvgRatingDTO
+            {
+                AverageRating = reviews.Count == 0 ? 0 : Math.Round(reviews.Average(), 2),
+                TotalReviews  = reviews.Count
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Review_Service] ERROR getting avg rating: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<AvgRatingDTO> GetAvgAgentRatingAsync(Guid agentId)

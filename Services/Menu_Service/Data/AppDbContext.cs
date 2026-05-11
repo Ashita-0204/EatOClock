@@ -13,9 +13,11 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.HasDefaultSchema("restaurants");
 
         modelBuilder.Entity<MenuCategory>(e =>
         {
+            e.ToTable("Categories");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.RestaurantId);
             e.HasIndex(x => x.IsActive);
@@ -27,6 +29,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<MenuItem>(e =>
         {
+            e.ToTable("Items");
             e.HasKey(x => x.Id);
             e.HasIndex(x => x.RestaurantId);
             e.HasIndex(x => x.CategoryId);

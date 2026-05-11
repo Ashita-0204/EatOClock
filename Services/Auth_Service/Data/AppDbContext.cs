@@ -11,6 +11,7 @@ public class AppDbContext : IdentityDbContext<User>
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.HasDefaultSchema("auth_custom");
         // Roles are seeded at runtime in Program.cs via RoleManager
     }
 }

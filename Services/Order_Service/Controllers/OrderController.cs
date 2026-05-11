@@ -12,29 +12,66 @@ namespace Order_Service.Controllers;
 public class OrderController : ControllerBase
 {
     private readonly IOrderService _svc;
-    public OrderController(IOrderService svc) => _svc = svc;
+    private readonly IHttpClientFactory _httpClientFactory;
+    public OrderController(IOrderService svc, IHttpClientFactory httpClientFactory)
+    {
+        _svc = svc;
+        _httpClientFactory = httpClientFactory;
+    }
 
     private string CallerId =>
         User.FindFirstValue(ClaimTypes.NameIdentifier)
+        ?? User.FindFirstValue("sub")
         ?? throw new UnauthorizedAccessException("User id claim missing.");
 
     private string CallerRole =>
         User.FindFirstValue(ClaimTypes.Role) ?? "Customer";
+
+    private string CallerEmail =>
+        User.FindFirstValue(ClaimTypes.Email) ?? string.Empty;
 
     //Place order
     [Authorize(Roles = "Customer,Admin")]
     [HttpPost]
     public async Task<IActionResult> PlaceOrder([FromBody] PlaceOrderRequest req)
     {
+        Console.WriteLine($"[Order_Service] Placing order for customer: {CallerId} at restaurant: {req.RestaurantId}");
         try
         {
             var order = await _svc.PlaceOrderAsync(CallerId, req);
+            Console.WriteLine($"[Order_Service] Order created: {order.OrderId}");
+            
+            // Send email notification via Notification_Service
+            try
+            {
+                var client = _httpClientFactory.CreateClient("NotificationService");
+                var notificationDto = new
+                {
+                    RecipientId = CallerId,
+                    OrderId = order.OrderId,
+                    OrderStatus = order.Status,
+                    Email = CallerEmail
+                };
+                Console.WriteLine($"[Order_Service] Sending notification to {CallerEmail}...");
+                await client.PostAsJsonAsync("/api/notifications/order", notificationDto);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[Order_Service] Failed to send notification: {ex.Message}");
+            }
+
             return CreatedAtAction(nameof(GetById), new { id = order.OrderId },
                 new ApiResponse<OrderDTOs>(true, "Order placed.", order));
         }
         catch (InvalidOperationException ex)
         {
+            Console.WriteLine($"[Order_Service] Validation error: {ex.Message}");
             return BadRequest(new ApiResponse<object>(false, ex.Message, null));
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Order_Service] UNEXPECTED ERROR: {ex.Message}\n{ex.StackTrace}");
+            return StatusCode(500, new ApiResponse<object>(false, "An unexpected error occurred while placing the order.", null));
         }
     }
 
@@ -77,7 +114,7 @@ public class OrderController : ControllerBase
     }
 
     //  Update status
-    [Authorize(Roles = "RestaurantOwner,Admin")]
+    [Authorize(Roles = "RestaurantOwner,Admin,DeliveryAgent")]
     [HttpPut("{id:guid}/status")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateStatusRequest req)
     {
@@ -141,9 +178,33 @@ public class OrderController : ControllerBase
         }
     }
 
+    //  Confirm Order
+    [HttpPut("{id:guid}/confirm")]
+    [Authorize(Roles = "Customer,Admin")]
+    public async Task<IActionResult> ConfirmOrder(Guid id)
+    {
+        try
+        {
+            // First check if it's their order
+            var orderCheck = await _svc.GetByIdAsync(id, CallerId, CallerRole);
+            if (orderCheck == null) return NotFound();
+
+            var order = await _svc.ConfirmOrderAsync(id);
+            return Ok(new ApiResponse<OrderDTOs>(true, "Order confirmed.", order));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new ApiResponse<object>(false, ex.Message, null));
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new ApiResponse<object>(false, ex.Message, null));
+        }
+    }
+
     //  Assign delivery agent (internal/system)
     [HttpPut("{id:guid}/assign-agent")]
-    [Authorize(Roles = "Admin,RestaurantOwner")]
+    [Authorize(Roles = "Admin,RestaurantOwner,DeliveryAgent")]
     public async Task<IActionResult> AssignAgent(Guid id, [FromBody] AssignAgentRequest req)
     {
         try
@@ -163,6 +224,23 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> GetAll()
     {
         var orders = await _svc.GetAllOrdersAsync();
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
+    }
+
+    //  Agent - available orders
+    [HttpGet("available")]
+    [Authorize(Roles = "Admin,DeliveryAgent")]
+    public async Task<IActionResult> GetAvailableOrders()
+    {
+        var orders = await _svc.GetAvailableOrdersAsync();
+        return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
+    }
+
+    [HttpGet("agent/{aId}")]
+    [Authorize(Roles = "Admin,DeliveryAgent")]
+    public async Task<IActionResult> GetAgentOrders(string aId)
+    {
+        var orders = await _svc.GetAgentOrdersAsync(aId);
         return Ok(new ApiResponse<List<OrderDTOs>>(true, null, orders));
     }
 }

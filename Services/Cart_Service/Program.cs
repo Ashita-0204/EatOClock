@@ -16,7 +16,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 // -- EF Core (Postgres) ----------------------------------------------------
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "orders")));
 
 // -- Redis distributed cache (fallback safe) -------------------------------
 var redisConn = builder.Configuration.GetConnectionString("Redis");

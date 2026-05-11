@@ -7,12 +7,14 @@ using DeliveryAgent_Service.Data;
 using DeliveryAgent_Service.Hubs;
 using DeliveryAgent_Service.Interfaces;
 using DeliveryAgent_Service.Services;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // -- Database ------------------------------------------------------------------
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
+    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
+        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "delivery")));
 
 // -- JWT Auth ------------------------------------------------------------------
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
@@ -56,7 +58,11 @@ builder.Services.AddSignalR();
 
 // -- App Services --------------------------------------------------------------
 builder.Services.AddScoped<IAgentService, AgentServiceImpl>();
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(opts =>
+    {
+        opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    });
 builder.Services.AddEndpointsApiExplorer();
 
 // -- Swagger -------------------------------------------------------------------

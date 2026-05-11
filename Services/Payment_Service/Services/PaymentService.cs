@@ -7,19 +7,58 @@ using Payment_Service.Models;
 
 namespace Payment_Service.Services;
 
-public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletService walletService) : IPaymentService
+public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletService walletService)
+    : IPaymentService
 {
-    public async Task<(PaymentResponse payment, string? razorpayOrderId)> ProcessPaymentAsync(string customerId, ProcessPaymentRequest req)
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    private static PaymentResponse ToResponse(Payment p) =>
+        new(p.PaymentId, p.OrderId, p.CustomerId, p.Amount, p.Status,
+            p.Mode, p.RazorpayOrderId, p.CreatedAt);
+
+    private Task<Payment?> FetchAsync(Guid paymentId) =>
+        db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.PaymentId == paymentId);
+
+    // ── Process payment ──────────────────────────────────────────────────────
+
+    public async Task<(PaymentResponse payment, string? razorpayOrderId)>
+        ProcessPaymentAsync(string customerId, ProcessPaymentRequest req)
     {
         string? rzpOrderId = null;
+        var now = DateTime.UtcNow;
 
-        var payment = new Payment
+        Payment payment;
+
+        // Determine if this is a verification call (second step)
+        bool isVerificationCall = (req.Mode == PaymentMode.CARD || req.Mode == PaymentMode.UPI) && 
+                                  req.RazorpayPaymentId != null && 
+                                  req.RazorpayOrderId != null && 
+                                  req.RazorpaySignature != null;
+
+        if (isVerificationCall)
         {
-            OrderId = req.OrderId,
-            CustomerId = customerId,
-            Amount = req.Amount,
-            Mode = req.Mode
-        };
+            // Fetch existing payment record
+            var existingPayment = await db.Payments
+                .FirstOrDefaultAsync(p => p.OrderId == req.OrderId && p.RazorpayOrderId == req.RazorpayOrderId);
+                
+            if (existingPayment == null)
+                throw new InvalidOperationException("Payment record not found for verification.");
+                
+            payment = existingPayment;
+            payment.UpdatedAt = now;
+        }
+        else
+        {
+            // Create a new payment record
+            payment = new Payment
+            {
+                OrderId    = req.OrderId,
+                CustomerId = customerId,
+                Amount     = req.Amount,
+                Mode       = req.Mode,
+                UpdatedAt  = now
+            };
+        }
 
         switch (req.Mode)
         {
@@ -28,84 +67,116 @@ public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletS
                 break;
 
             case PaymentMode.WALLET:
-                // Deduct from wallet; WalletPayRequest validated inside
-                await walletService.PayFromWalletAsync(customerId, new WalletPayRequest(req.OrderId, req.Amount));
+                // Deduct from wallet first; throws on insufficient balance.
+                await walletService.PayFromWalletAsync(
+                    customerId, new WalletPayRequest(req.OrderId, req.Amount));
                 payment.Status = PaymentStatus.PAID;
                 break;
 
             case PaymentMode.CARD:
             case PaymentMode.UPI:
-                if (req.RazorpayPaymentId == null || req.RazorpayOrderId == null || req.RazorpaySignature == null)
+                if (!isVerificationCall)
                 {
-                    // First call: create Razorpay order
-                    rzpOrderId = razorpay.CreateOrder(req.Amount, "INR", req.OrderId.ToString());
-                    payment.Status = PaymentStatus.PENDING;
-                    payment.RazorpayOrderId = rzpOrderId;
+                    // First call: create a Razorpay order.
+                    try 
+                    {
+                        rzpOrderId                = razorpay.CreateOrder(req.Amount, "INR", req.OrderId.ToString());
+                        payment.Status            = PaymentStatus.PENDING;
+                        payment.RazorpayOrderId   = rzpOrderId;
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new InvalidOperationException($"Razorpay gateway error: {ex.Message}");
+                    }
                 }
                 else
                 {
-                    // Second call: verify payment
-                    if (!razorpay.VerifySignature(req.RazorpayOrderId, req.RazorpayPaymentId, req.RazorpaySignature))
+                    // Second call: verify the payment signature.
+                    bool valid = razorpay.VerifySignature(
+                        req.RazorpayOrderId!, req.RazorpayPaymentId!, req.RazorpaySignature!);
+
+                    if (!valid)
                     {
-                        payment.Status = PaymentStatus.FAILED;
+                        payment.Status        = PaymentStatus.FAILED;
                         payment.FailureReason = "Signature verification failed";
                     }
                     else
                     {
-                        payment.Status = PaymentStatus.PAID;
-                        payment.RazorpayOrderId = req.RazorpayOrderId;
-                        payment.RazorpayPaymentId = req.RazorpayPaymentId;
+                        payment.Status             = PaymentStatus.PAID;
+                        payment.RazorpayOrderId    = req.RazorpayOrderId;
+                        payment.RazorpayPaymentId  = req.RazorpayPaymentId;
                     }
                 }
                 break;
         }
 
-        payment.UpdatedAt = DateTime.UtcNow;
-        db.Payments.Add(payment);
+        if (!isVerificationCall)
+        {
+            db.Payments.Add(payment);
+        }
+        
         await db.SaveChangesAsync();
 
         return (ToResponse(payment), rzpOrderId);
     }
 
-    public async Task<PaymentResponse> RefundPaymentAsync(string requesterId, bool isAdmin, RefundRequest req)
+    // ── Refund ───────────────────────────────────────────────────────────────
+
+    public async Task<PaymentResponse> RefundPaymentAsync(
+        string requesterId, bool isAdmin, RefundRequest req)
     {
-        var payment = await db.Payments.FindAsync(req.PaymentId)
-            ?? throw new KeyNotFoundException("Payment not found");
+        var payment = await FetchAsync(req.PaymentId)
+                      ?? throw new KeyNotFoundException("Payment not found.");
 
         if (!isAdmin && payment.CustomerId != requesterId)
-            throw new UnauthorizedAccessException("Access denied");
+            throw new UnauthorizedAccessException("Access denied.");
 
         if (payment.Status != PaymentStatus.PAID)
-            throw new InvalidOperationException("Only PAID payments can be refunded");
+            throw new InvalidOperationException("Only PAID payments can be refunded.");
 
-        if (payment.Mode is PaymentMode.CARD or PaymentMode.UPI && payment.RazorpayPaymentId != null)
+        // Trigger external refunds first (before we update the DB row).
+        if (payment.Mode is PaymentMode.CARD or PaymentMode.UPI &&
+            payment.RazorpayPaymentId != null)
             razorpay.RefundPayment(payment.RazorpayPaymentId, payment.Amount);
 
         if (payment.Mode == PaymentMode.WALLET)
-            await walletService.CreditWalletAsync(payment.CustomerId, payment.Amount, $"Refund: {req.Reason}", payment.PaymentId.ToString());
+            await walletService.CreditWalletAsync(
+                payment.CustomerId, payment.Amount,
+                $"Refund: {req.Reason}", payment.PaymentId.ToString());
 
-        payment.Status = PaymentStatus.REFUNDED;
-        payment.UpdatedAt = DateTime.UtcNow;
-        await db.SaveChangesAsync();
+        // FIX: targeted UPDATE — no tracked entity, no concurrency token check.
+        await db.Payments
+            .Where(p => p.PaymentId == payment.PaymentId)
+            .ExecuteUpdateAsync(s => s
+                .SetProperty(p => p.Status,    PaymentStatus.REFUNDED)
+                .SetProperty(p => p.UpdatedAt, DateTime.UtcNow));
 
-        return ToResponse(payment);
+        // Re-read to return the up-to-date record.
+        return ToResponse((await FetchAsync(payment.PaymentId))!);
     }
+
+    // ── Queries ──────────────────────────────────────────────────────────────
 
     public async Task<PaymentResponse?> GetByOrderIdAsync(string customerId, Guid orderId)
     {
-        var p = await db.Payments.FirstOrDefaultAsync(x => x.OrderId == orderId && x.CustomerId == customerId);
+        var p = await db.Payments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(x => x.OrderId == orderId && x.CustomerId == customerId);
         return p == null ? null : ToResponse(p);
     }
 
     public async Task<IEnumerable<PaymentResponse>> GetCustomerHistoryAsync(string customerId) =>
-        await db.Payments.Where(p => p.CustomerId == customerId)
+        await db.Payments
+            .AsNoTracking()
+            .Where(p => p.CustomerId == customerId)
             .OrderByDescending(p => p.CreatedAt)
-            .Select(p => ToResponse(p)).ToListAsync();
+            .Select(p => ToResponse(p))
+            .ToListAsync();
 
     public async Task<IEnumerable<PaymentResponse>> GetAllTransactionsAsync() =>
-        await db.Payments.OrderByDescending(p => p.CreatedAt)
-            .Select(p => ToResponse(p)).ToListAsync();
-
-    private static PaymentResponse ToResponse(Payment p) =>
-        new(p.PaymentId, p.OrderId, p.CustomerId, p.Amount, p.Status, p.Mode, p.RazorpayOrderId, p.CreatedAt);
+        await db.Payments
+            .AsNoTracking()
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => ToResponse(p))
+            .ToListAsync();
 }

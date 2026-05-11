@@ -31,6 +31,15 @@ public class AgentController(IAgentService svc) : ControllerBase
         return result.Success ? Ok(result) : NotFound(result);
     }
 
+    // -- Get my profile --------------------------------------------------------
+    [Authorize(Roles = "DeliveryAgent,Admin")]
+    [HttpGet("my-profile")]
+    public async Task<IActionResult> GetMyProfile()
+    {
+        var result = await svc.GetByUserIdAsync(UserId);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
+
     //  Admin verify ---------------------------------------------------
    
     [HttpPut("{id:guid}/verify")]
@@ -38,6 +47,14 @@ public class AgentController(IAgentService svc) : ControllerBase
     public async Task<IActionResult> Verify(Guid id)
     {
         var result = await svc.VerifyAsync(id);
+        return result.Success ? Ok(result) : NotFound(result);
+    }
+
+    [HttpDelete("{id:guid}/reject")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Reject(Guid id)
+    {
+        var result = await svc.RejectAsync(id);
         return result.Success ? Ok(result) : NotFound(result);
     }
 
@@ -103,9 +120,18 @@ public class AgentController(IAgentService svc) : ControllerBase
         return Ok(result);
     }
 
+    // Get all agents (Admin use) --------------------------------------
+    [HttpGet("all")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> GetAllAgents()
+    {
+        var result = await svc.GetAllAgentsAsync();
+        return Ok(result);
+    }
+
     // -- System: Assign order --------------------------------------------------
     [HttpPost("{id:guid}/assign")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "DeliveryAgent,Admin")]
     public async Task<IActionResult> AssignOrder(Guid id, [FromBody] AssignOrderRequest req)
     {
         var result = await svc.AssignOrderAsync(id, req);

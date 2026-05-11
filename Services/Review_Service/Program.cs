@@ -10,7 +10,11 @@ using Review_Service.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
+    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
+        x => {
+            x.MigrationsHistoryTable("__EFMigrationsHistory", "analytics");
+            x.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+        }));
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
@@ -34,6 +38,7 @@ builder.Services.AddAuthentication(o =>
     };
 });
 
+builder.Services.AddAuthorization();
 builder.Services.AddScoped<IReviewService, ReviewServiceImpl>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -63,11 +68,13 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
+/*
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
+*/
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>

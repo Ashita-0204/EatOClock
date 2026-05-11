@@ -28,6 +28,26 @@ try
               .Enrich.WithProperty("Service", "EatOClock.Gateway")
               .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {SourceContext} {Message:lj}{NewLine}{Exception}"));
 
+    // ── CORS ─────────────────────────────────────────────────────────────────
+    // Allows the Angular dev server (and any configured production origin) to
+    // call the gateway.  Adjust the origin list for production deployments.
+    var corsOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>()
+        ?? new[] { "http://localhost:4200" };
+
+    builder.Services.AddCors(options =>
+    {
+        options.AddPolicy("FrontendPolicy", policy =>
+        {
+            policy.WithOrigins(corsOrigins)
+                  .AllowAnyHeader()
+                  .AllowAnyMethod()
+                  .AllowCredentials();
+        });
+    });
+    // ─────────────────────────────────────────────────────────────────────────
+
     // JWT Auth — gateway validates tokens before proxying
     var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
     builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -49,21 +69,25 @@ try
 
     // Health checks for all downstream services
     builder.Services.AddHealthChecks()
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Auth"] + "/health"), name: "auth-service",             tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Restaurant"] + "/health"), name: "restaurant-service", tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Menu"] + "/health"), name: "menu-service",             tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Cart"] + "/health"), name: "cart-service",             tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Order"] + "/health"), name: "order-service",           tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Payment"] + "/health"), name: "payment-service",       tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Notification"] + "/health"), name: "notification-service", tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:DeliveryAgent"] + "/health"), name: "delivery-agent-service", tags: new[] { "services" })
-        .AddUrlGroup(new Uri(builder.Configuration["Services:Review"] + "/health"), name: "review-service",         tags: new[] { "services" });
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Auth"]          + "/health"), name: "auth-service",              tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Restaurant"]    + "/health"), name: "restaurant-service",        tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Menu"]          + "/health"), name: "menu-service",              tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Cart"]          + "/health"), name: "cart-service",              tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Order"]         + "/health"), name: "order-service",             tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Payment"]       + "/health"), name: "payment-service",           tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Notification"]  + "/health"), name: "notification-service",      tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:DeliveryAgent"] + "/health"), name: "delivery-agent-service",    tags: new[] { "services" })
+        .AddUrlGroup(new Uri(builder.Configuration["Services:Review"]        + "/health"), name: "review-service",            tags: new[] { "services" });
 
     // YARP Reverse Proxy
     builder.Services.AddReverseProxy()
         .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
     var app = builder.Build();
+
+    // ── Middleware order matters ──────────────────────────────────────────────
+    // CORS must come BEFORE authentication/authorization and the proxy
+    app.UseCors("FrontendPolicy");
 
     // Request/response logging
     app.UseSerilogRequestLogging(options =>
@@ -85,7 +109,7 @@ try
     // Gateway self health
     app.MapHealthChecks("/health", new HealthCheckOptions
     {
-        Predicate = _ => false, // only gateway itself
+        Predicate = _ => false,
         ResponseWriter = async (ctx, report) =>
         {
             ctx.Response.ContentType = "application/json";
@@ -118,6 +142,13 @@ try
                 })
             }));
         }
+    });
+
+    app.Use(async (context, next) =>
+    {
+        Log.Information("Incoming Request: {Method} {Path}", context.Request.Method, context.Request.Path);
+        await next();
+        Log.Information("Response: {StatusCode}", context.Response.StatusCode);
     });
 
     app.MapReverseProxy();

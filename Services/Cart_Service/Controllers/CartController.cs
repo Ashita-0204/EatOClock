@@ -12,20 +12,42 @@ namespace Cart_Service.Controllers;
 public class CartController : ControllerBase
 {
     private readonly ICartService _cart;
+    private readonly ILogger<CartController> _logger;
 
-    public CartController(ICartService cart) => _cart = cart;
+    public CartController(ICartService cart, ILogger<CartController> logger)
+    {
+        _cart = cart;
+        _logger = logger;
+    }
 
-    private string CustomerId =>
-        User.FindFirstValue(ClaimTypes.NameIdentifier)
-        ?? throw new UnauthorizedAccessException("Customer id claim missing.");
+    // FIX: Wrap in a try/catch that returns 401 when the claim is missing,
+    // instead of letting UnauthorizedAccessException bubble into a 500.
+    private string GetCustomerId()
+    {
+        var id = User.FindFirstValue(ClaimTypes.NameIdentifier)
+               ?? User.FindFirstValue("sub")          // some JWT issuers use "sub"
+               ?? User.FindFirstValue("nameid");       // legacy claim type
 
-    //  View cart
+        if (string.IsNullOrWhiteSpace(id))
+            throw new UnauthorizedAccessException("Customer ID claim is missing from the token.");
+
+        return id;
+    }
+
+    // View cart
     [HttpGet]
     public async Task<IActionResult> GetCart()
     {
-        var cart = await _cart.GetCartAsync(CustomerId);
-        if (cart == null) return Ok(new ApiResponse<object>(true, "Cart is empty.", null));
-        return Ok(new ApiResponse<CartDTOs>(true, null, cart));
+        try
+        {
+            var cart = await _cart.GetCartAsync(GetCustomerId());
+            if (cart == null) return Ok(new ApiResponse<object>(true, "Cart is empty.", null));
+            return Ok(new ApiResponse<CartDTOs>(true, null, cart));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
+        }
     }
 
     // Add item (single-restaurant enforced in service)
@@ -34,23 +56,37 @@ public class CartController : ControllerBase
     {
         try
         {
-            var cart = await _cart.AddItemAsync(CustomerId, req);
+            var cart = await _cart.AddItemAsync(GetCustomerId(), req);
             return Ok(new ApiResponse<CartDTOs>(true, "Item added.", cart));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning("Conflict in AddItem: {Message}", ex.Message);
             return Conflict(new ApiResponse<object>(false, ex.Message, null));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "CRITICAL ERROR in AddItem");
+            return StatusCode(500, new ApiResponse<object>(false, $"Internal error: {ex.Message}", null));
         }
     }
 
-    //  Update quantity
+    // Update quantity
     [HttpPut("items/{itemId:guid}/qty")]
     public async Task<IActionResult> UpdateQty(Guid itemId, [FromBody] UpdateQtyRequest req)
     {
         try
         {
-            var cart = await _cart.UpdateQtyAsync(CustomerId, itemId, req.Quantity);
+            var cart = await _cart.UpdateQtyAsync(GetCustomerId(), itemId, req.Quantity);
             return Ok(new ApiResponse<CartDTOs>(true, "Quantity updated.", cart));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
         }
         catch (KeyNotFoundException ex)
         {
@@ -58,14 +94,18 @@ public class CartController : ControllerBase
         }
     }
 
-    //  Remove item
+    // Remove item
     [HttpDelete("items/{itemId:guid}")]
     public async Task<IActionResult> RemoveItem(Guid itemId)
     {
         try
         {
-            var cart = await _cart.RemoveItemAsync(CustomerId, itemId);
+            var cart = await _cart.RemoveItemAsync(GetCustomerId(), itemId);
             return Ok(new ApiResponse<CartDTOs>(true, "Item removed.", cart));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
         }
         catch (KeyNotFoundException ex)
         {
@@ -77,18 +117,29 @@ public class CartController : ControllerBase
     [HttpDelete]
     public async Task<IActionResult> ClearCart()
     {
-        await _cart.ClearCartAsync(CustomerId);
-        return Ok(new ApiResponse<object>(true, "Cart cleared.", null));
+        try
+        {
+            await _cart.ClearCartAsync(GetCustomerId());
+            return Ok(new ApiResponse<object>(true, "Cart cleared.", null));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
+        }
     }
 
-    //  Apply promo
+    // Apply promo
     [HttpPost("promo")]
     public async Task<IActionResult> ApplyPromo([FromBody] ApplyPromoRequest req)
     {
         try
         {
-            var cart = await _cart.ApplyPromoAsync(CustomerId, req.PromoCode);
+            var cart = await _cart.ApplyPromoAsync(GetCustomerId(), req.PromoCode);
             return Ok(new ApiResponse<CartDTOs>(true, $"Promo '{req.PromoCode}' applied.", cart));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
         }
         catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
         {
@@ -96,11 +147,18 @@ public class CartController : ControllerBase
         }
     }
 
-    //  Switch restaurant (clears cart, creates new)
+    // Switch restaurant (clears cart, creates new)
     [HttpPost("switch-restaurant")]
     public async Task<IActionResult> SwitchRestaurant([FromBody] SwitchRestaurantRequest req)
     {
-        var cart = await _cart.SwitchRestaurantAsync(CustomerId, req.NewRestaurantId);
-        return Ok(new ApiResponse<CartDTOs>(true, "Switched restaurant. Cart cleared.", cart));
+        try
+        {
+            var cart = await _cart.SwitchRestaurantAsync(GetCustomerId(), req.NewRestaurantId);
+            return Ok(new ApiResponse<CartDTOs>(true, "Switched restaurant. Cart cleared.", cart));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(new ApiResponse<object>(false, ex.Message, null));
+        }
     }
 }

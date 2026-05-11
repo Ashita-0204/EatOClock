@@ -14,6 +14,7 @@ using Auth_Service.DTOs;
 using System.Collections.Generic;
 using Auth_Service.Interfaces; 
 using Auth_Service.Models;
+using Auth_Service.Enums;
 
 namespace Auth_Service.Services;
 public class AuthServiceImpl : IAuthService
@@ -32,40 +33,52 @@ public class AuthServiceImpl : IAuthService
         _context = context;
     }
 
-   public async Task<AuthResult> RegisterAsync(RegisterDTO dto)
+ public async Task<AuthResult> RegisterAsync(RegisterDTO dto)
 {
     if (await _userManager.FindByEmailAsync(dto.Email) != null)
         return new AuthResult { Success = false, Message = "Email already registered" };
-
-     // "Customer", "RestaurantOwner", or "DeliveryAgent"
-var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
-
-    // Ensure role exists (seeded, but safety check)
+ 
+    // Convert int role to enum, then get the string name e.g. "Customer"
+    AllowedRegistrationRole roleEnum;
+    try
+    {
+        roleEnum = dto.GetRole();
+        if (!Enum.IsDefined(typeof(AllowedRegistrationRole), roleEnum))
+            return new AuthResult { Success = false, Message = "Invalid role selected" };
+    }
+    catch
+    {
+        return new AuthResult { Success = false, Message = "Invalid role selected" };
+    }
+ 
+    var roleName = roleEnum.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
+ 
     if (!await _roleManager.RoleExistsAsync(roleName))
         return new AuthResult { Success = false, Message = "Invalid role selected" };
-
+ 
     var user = new User
     {
         UserName = dto.Email,
         Email = dto.Email,
         FullName = dto.FullName,
         PhoneNumber = dto.PhoneNumber,
-        CreatedAt = DateTime.UtcNow
+        CreatedAt = DateTime.UtcNow,
+        IsActive = true
     };
-
+ 
     var result = await _userManager.CreateAsync(user, dto.Password);
     if (!result.Succeeded)
         return new AuthResult { Success = false, Message = string.Join(", ", result.Errors.Select(e => e.Description)) };
-
+ 
     await _userManager.AddToRoleAsync(user, roleName);
-
+ 
     var accessToken = await GenerateJwtToken(user);
     var refreshToken = GenerateRefreshToken();
-
+ 
     user.RefreshToken = refreshToken;
     user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
     await _userManager.UpdateAsync(user);
-
+ 
     return new AuthResult
     {
         Success = true,
@@ -84,9 +97,23 @@ var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "Delive
 }
     public async Task<AuthResult> LoginAsync(LoginDTO dto)
     {
+        Console.WriteLine($"Login attempt for email: {dto.Email}");
         var user = await _userManager.FindByEmailAsync(dto.Email);
-        if (user == null || !await _userManager.CheckPasswordAsync(user, dto.Password))
+        
+        if (user == null)
+        {
+            Console.WriteLine($"Login failed: User not found for email {dto.Email}");
             return new AuthResult { Success = false, Message = "Invalid email or password" };
+        }
+
+        var isPasswordValid = await _userManager.CheckPasswordAsync(user, dto.Password);
+        if (!isPasswordValid)
+        {
+            Console.WriteLine($"Login failed: Invalid password for user {dto.Email}. NormalizedEmail in DB: {user.NormalizedEmail}");
+            return new AuthResult { Success = false, Message = "Invalid email or password" };
+        }
+
+        Console.WriteLine($"Login success for user: {dto.Email}");
 
         if (!user.IsActive)
             return new AuthResult { Success = false, Message = "Account is deactivated" };
@@ -153,6 +180,24 @@ var roleName = dto.Role.ToString(); // "Customer", "RestaurantOwner", or "Delive
     {
         var user = await _userManager.FindByIdAsync(userId);
         if (user == null) throw new Exception("User not found");
+
+        var roles = await _userManager.GetRolesAsync(user);
+        
+        return new UserDTO
+        {
+            Id = user.Id,
+            Email = user.Email!,
+            FullName = user.FullName,
+            Role = roles.FirstOrDefault() ?? "Customer",
+            PhoneNumber = user.PhoneNumber,
+            IsActive = user.IsActive
+        };
+    }
+
+    public async Task<UserDTO> GetUserByIdAsync(string userId)
+    {
+        var user = await _userManager.FindByIdAsync(userId);
+        if (user == null) return null; // Better to return null than throw if it's for internal use
 
         var roles = await _userManager.GetRolesAsync(user);
         

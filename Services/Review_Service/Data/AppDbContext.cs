@@ -9,6 +9,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        modelBuilder.HasDefaultSchema("analytics");
         modelBuilder.Entity<Review>(e =>
         {
             e.HasKey(r => r.ReviewId);

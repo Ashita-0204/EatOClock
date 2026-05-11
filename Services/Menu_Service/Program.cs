@@ -14,7 +14,11 @@ using Menu_Service.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        x => {
+            x.MigrationsHistoryTable("__EFMigrationsHistory", "restaurants");
+            x.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
+        }));
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
@@ -68,12 +72,14 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Run migrations
+// Run migrations disabled to prevent conflicts and hangs (handled by restaurant-service)
+/*
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
+*/
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
@@ -85,11 +91,5 @@ app.UseSwaggerUI(c =>
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Menu-Service", time = DateTime.UtcNow }));
-app.MapControllers();
-app.Run();
-app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Menu-Service", time = DateTime.UtcNow }));
-
-app.UseAuthentication();
-app.UseAuthorization();
 app.MapControllers();
 app.Run();

@@ -20,6 +20,7 @@ public interface IAuthService
     Task<AuthResult> LoginAsync(LoginDTO dto);
     Task<AuthResult> RefreshTokenAsync(string refreshToken);
     Task<UserDTO> GetProfileAsync(string userId);
+    Task<UserDTO> GetUserByIdAsync(string userId);
     Task<bool> UpdateProfileAsync(string userId, string fullName, string? phoneNumber);
     Task<bool> ChangePasswordAsync(string userId, ChangePasswordDTO dto);
     Task<bool> DeactivateAccountAsync(string userId);

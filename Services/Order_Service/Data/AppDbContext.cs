@@ -12,6 +12,7 @@ public class AppDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder mb)
     {
+        mb.HasDefaultSchema("orders");
         mb.Entity<Order>(e =>
         {
             e.HasKey(o => o.OrderId);

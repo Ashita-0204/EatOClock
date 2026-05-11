@@ -70,6 +70,7 @@ namespace CartService.Migrations
             migrationBuilder.InsertData(
                 table: "PromoCodes",
                 columns: new[] { "Id", "Code", "DiscountPercent", "ExpiresAt", "IsActive" },
+                columnTypes: new[] { "uuid", "text", "numeric(5,2)", "timestamp with time zone", "boolean" },
                 values: new object[,]
                 {
                     { new Guid("11111111-0000-0000-0000-000000000001"), "SAVE10", 10m, new DateTime(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc), true },

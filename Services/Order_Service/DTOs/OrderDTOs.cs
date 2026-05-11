@@ -7,6 +7,7 @@ public class OrderDTOs
     public Guid OrderId { get; set; }
     public string CustomerId { get; set; } = string.Empty;
     public Guid RestaurantId { get; set; }
+    public string? RestaurantName { get; set; }
     public string? DeliveryAgentId { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal Discount { get; set; }
@@ -21,7 +22,7 @@ public class OrderDTOs
     public DateTime UpdatedAt { get; set; }
 public OrderDTOs() { }
 
-    public OrderDTOs(Guid orderId, string customerId, Guid restaurantId, string? deliveryAgentId,
+    public OrderDTOs(Guid orderId, string customerId, Guid restaurantId, string? restaurantName, string? deliveryAgentId,
         decimal totalAmount, decimal discount, decimal finalAmount, string modeOfPayment,
         string status, string deliveryAddress, string? notes, string? cancellationReason,
         List<OrderItemDTO> items, DateTime createdAt, DateTime updatedAt)
@@ -29,6 +30,7 @@ public OrderDTOs() { }
         OrderId = orderId;
         CustomerId = customerId;
         RestaurantId = restaurantId;
+        RestaurantName = restaurantName;
         DeliveryAgentId = deliveryAgentId;
         TotalAmount = totalAmount;
         Discount = discount;

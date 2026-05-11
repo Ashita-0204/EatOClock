@@ -30,12 +30,28 @@ public class MenuService : IMenuService
 
     public async Task<List<CategoryResponse>> GetCategoriesByRestaurantAsync(Guid restaurantId)
     {
-        var cats = await _db.Categories
-            .Include(c => c.Items)
-            .Where(c => c.RestaurantId == restaurantId && c.IsActive)
-            .OrderBy(c => c.DisplayOrder)
-            .ToListAsync();
-        return cats.Select(MapCategory).ToList();
+        Console.WriteLine($"[Menu_Service] Fetching categories for RestaurantId: {restaurantId}");
+        try
+        {
+            var cats = await _db.Categories
+                .Include(c => c.Items)
+                .Where(c => c.RestaurantId == restaurantId && c.IsActive)
+                .OrderBy(c => c.DisplayOrder)
+                .ToListAsync();
+            
+            Console.WriteLine($"[Menu_Service] Found {cats.Count} categories for RestaurantId: {restaurantId}");
+            foreach(var cat in cats)
+            {
+                Console.WriteLine($"[Menu_Service] Category: {cat.Name} has {cat.Items.Count} items.");
+            }
+            
+            return cats.Select(MapCategory).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[Menu_Service] ERROR fetching categories: {ex.Message}");
+            throw;
+        }
     }
 
     // -- Items ---------------------------------------------

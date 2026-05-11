@@ -88,6 +88,16 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Agent verified.", true);
     }
 
+    public async Task<ApiResponse<bool>> RejectAsync(Guid agentId)
+    {
+        var a = await db.DeliveryAgents.FindAsync(agentId);
+        if (a is null) return new(false, "Agent not found.", false);
+
+        db.DeliveryAgents.Remove(a);
+        await db.SaveChangesAsync();
+        return new(true, "Agent rejected and removed.", true);
+    }
+
     // -- UC-45: Toggle availability --------------------------------------------
 
     public async Task<ApiResponse<bool>> ToggleAvailabilityAsync(Guid agentId, string userId)
@@ -253,6 +263,13 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
             .ToList();
 
         return new(true, null, nearby);
+    }
+
+    // -- System: Get all agents ------------------------------------------------
+    public async Task<ApiResponse<List<AgentDTOs>>> GetAllAgentsAsync()
+    {
+        var agents = await db.DeliveryAgents.ToListAsync();
+        return new(true, null, agents.Select(ToDto).ToList());
     }
 
     // -- System: Update rating -------------------------------------------------

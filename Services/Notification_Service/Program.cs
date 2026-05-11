@@ -12,7 +12,8 @@ using Notification_Service.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
+    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
+        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "notifications")));
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
