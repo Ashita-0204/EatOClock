@@ -141,10 +141,18 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // -- AUTO MIGRATION --------------------------------------------------------
-using (var scope = app.Services.CreateScope())
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Console.WriteLine("Applying Cart migrations...");
+        await db.Database.MigrateAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error during Cart migrations: {ex.Message}");
 }
 
 // -- MIDDLEWARE -----------------------------------------------------------
@@ -165,5 +173,7 @@ app.MapGet("/health", () =>
         service = "Cart-Service",
         time = DateTime.UtcNow
     }));
+
+app.MapGet("/api/v1/cart/health", () => Results.Ok(new { status = "Healthy", service = "Cart-Service", version = "v1", time = DateTime.UtcNow }));
 
 app.Run();

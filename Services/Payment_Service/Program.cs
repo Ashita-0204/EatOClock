@@ -61,10 +61,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Console.WriteLine("Applying Payment migrations...");
+        await db.Database.MigrateAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error during Payment migrations: {ex.Message}");
 }
 
 app.UseSwagger();
@@ -74,6 +82,7 @@ app.UseSwaggerUI(c =>
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));
+app.MapGet("/api/v1/payments/health", () => Results.Ok(new { status = "Healthy", service = "Payment-Service", version = "v1", time = DateTime.UtcNow }));
 
 app.UseAuthentication();
 app.UseAuthorization();

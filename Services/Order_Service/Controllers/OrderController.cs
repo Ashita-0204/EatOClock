@@ -53,7 +53,7 @@ public class OrderController : ControllerBase
                     Email = CallerEmail
                 };
                 Console.WriteLine($"[Order_Service] Sending notification to {CallerEmail}...");
-                await client.PostAsJsonAsync("/api/notifications/order", notificationDto);
+                await client.PostAsJsonAsync("/api/v1/notifications/order", notificationDto);
             }
             catch (Exception ex)
             {

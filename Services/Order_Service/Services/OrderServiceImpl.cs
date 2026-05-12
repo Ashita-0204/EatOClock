@@ -57,7 +57,7 @@ public class OrderServiceImpl : IOrderService
         try
         {
             var client = _httpClientFactory.CreateClient("RestaurantService");
-            var res = await client.GetFromJsonAsync<dynamic>($"/api/Restaurant/{req.RestaurantId}");
+            var res = await client.GetFromJsonAsync<dynamic>($"/api/v1/restaurant/{req.RestaurantId}");
             if (res != null) resName = res.name;
         }
         catch { /* fallback */ }

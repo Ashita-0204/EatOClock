@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace Review_Service.Controllers;
 
 [ApiController]
-[Route("api/reviews")]
+[Route("api/v1/reviews")]
 public class ReviewsController(IReviewService svc) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;

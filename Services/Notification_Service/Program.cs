@@ -133,6 +133,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<NotificationHub>("/hubs/notifications");
-app.MapGet("/health", () => Results.Ok("Healthy"));
+app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));
+app.MapGet("/api/v1/notifications/health", () => Results.Ok(new { status = "Healthy", service = "Notification-Service", version = "v1", time = DateTime.UtcNow }));
 
 app.Run();

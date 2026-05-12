@@ -97,83 +97,88 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Run migrations + seed roles
-using (var scope = app.Services.CreateScope())
+try
 {
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await dbContext.Database.MigrateAsync();
-
-    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
-    string[] roles = { "Customer", "RestaurantOwner", "DeliveryAgent", "Admin" };
-    foreach (var role in roles)
+    using (var scope = app.Services.CreateScope())
     {
-        if (!await roleManager.RoleExistsAsync(role))
-            await roleManager.CreateAsync(new IdentityRole(role));
-    }
+        var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Console.WriteLine("Applying migrations...");
+        await dbContext.Database.MigrateAsync();
 
-    // Seed default admin if none exists
-    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
-    const string adminEmail = "admin@eatoclock.com";
-    const string adminPassword = "Admin@123456";
-
-    var adminUser = await userManager.FindByEmailAsync(adminEmail);
-    if (adminUser == null)
-    {
-        adminUser = new User
+        var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
+        string[] roles = { "Customer", "RestaurantOwner", "DeliveryAgent", "Admin" };
+        foreach (var role in roles)
         {
-            UserName = adminEmail,
-            Email = adminEmail,
-            FullName = "System Admin",
-            CreatedAt = DateTime.UtcNow,
-            IsActive = true
-        };
-        var createResult = await userManager.CreateAsync(adminUser, adminPassword);
-        if (createResult.Succeeded)
-            await userManager.AddToRoleAsync(adminUser, "Admin");
-    }
-    else
-    {
-        // For development/recovery: ensure the password matches the hardcoded one
-        // If the existing user has a null security stamp (common in corrupted/imported data), set it first
-        if (string.IsNullOrEmpty(adminUser.SecurityStamp))
-        {
-            await userManager.UpdateSecurityStampAsync(adminUser);
+            if (!await roleManager.RoleExistsAsync(role))
+                await roleManager.CreateAsync(new IdentityRole(role));
         }
 
-        var resetToken = await userManager.GeneratePasswordResetTokenAsync(adminUser);
-        await userManager.ResetPasswordAsync(adminUser, resetToken, adminPassword);
-    }
+        // Seed default admin if none exists
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+        const string adminEmail = "admin@eatoclock.com";
+        const string adminPassword = "Admin@123456";
 
-    // Fix and normalize all existing users to ensure they can login
-    Console.WriteLine("Starting user normalization and security stamp fix...");
-    var allUsers = await userManager.Users.ToListAsync();
-    int fixedCount = 0;
-    foreach (var user in allUsers)
-    {
-        bool changed = false;
-        if (string.IsNullOrEmpty(user.SecurityStamp))
+        var adminUser = await userManager.FindByEmailAsync(adminEmail);
+        if (adminUser == null)
         {
-            await userManager.UpdateSecurityStampAsync(user);
-            changed = true;
+            adminUser = new User
+            {
+                UserName = adminEmail,
+                Email = adminEmail,
+                FullName = "System Admin",
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+            var createResult = await userManager.CreateAsync(adminUser, adminPassword);
+            if (createResult.Succeeded)
+                await userManager.AddToRoleAsync(adminUser, "Admin");
         }
-        
-        // Ensure normalization is correct so they can be found by email/username
-        var normalizedEmail = userManager.NormalizeEmail(user.Email!);
-        var normalizedName = userManager.NormalizeName(user.UserName!);
-        
-        if (user.NormalizedEmail != normalizedEmail || user.NormalizedUserName != normalizedName)
+        else
         {
-            user.NormalizedEmail = normalizedEmail;
-            user.NormalizedUserName = normalizedName;
-            changed = true;
+            if (string.IsNullOrEmpty(adminUser.SecurityStamp))
+            {
+                await userManager.UpdateSecurityStampAsync(adminUser);
+            }
+
+            var resetToken = await userManager.GeneratePasswordResetTokenAsync(adminUser);
+            await userManager.ResetPasswordAsync(adminUser, resetToken, adminPassword);
         }
 
-        if (changed)
+        // Fix and normalize all existing users to ensure they can login
+        Console.WriteLine("Starting user normalization and security stamp fix...");
+        var allUsers = await userManager.Users.ToListAsync();
+        int fixedCount = 0;
+        foreach (var user in allUsers)
         {
-            await userManager.UpdateAsync(user);
-            fixedCount++;
+            bool changed = false;
+            if (string.IsNullOrEmpty(user.SecurityStamp))
+            {
+                await userManager.UpdateSecurityStampAsync(user);
+                changed = true;
+            }
+            
+            var normalizedEmail = userManager.NormalizeEmail(user.Email!);
+            var normalizedName = userManager.NormalizeName(user.UserName!);
+            
+            if (user.NormalizedEmail != normalizedEmail || user.NormalizedUserName != normalizedName)
+            {
+                user.NormalizedEmail = normalizedEmail;
+                user.NormalizedUserName = normalizedName;
+                changed = true;
+            }
+
+            if (changed)
+            {
+                await userManager.UpdateAsync(user);
+                fixedCount++;
+            }
         }
+        Console.WriteLine($"User normalization complete. Fixed {fixedCount} users.");
     }
-    Console.WriteLine($"User normalization complete. Fixed {fixedCount} users.");
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"An error occurred during startup migration/seeding: {ex.Message}");
 }
 
 app.UseSwagger();
@@ -186,6 +191,7 @@ app.UseSwaggerUI(c =>
 app.UseCors("FrontendPolicy");
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));
+app.MapGet("/api/v1/auth/health", () => Results.Ok(new { status = "Healthy", service = "Auth-Service", version = "v1", time = DateTime.UtcNow }));
 
 app.UseAuthentication();
 app.UseAuthorization();

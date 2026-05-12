@@ -9,7 +9,7 @@ using Restaurant_Service.Interfaces;
 namespace Restaurant_Service.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/v1/[controller]")]
 public class RestaurantController : ControllerBase
 {
     private readonly IRestaurantService _restaurantService;

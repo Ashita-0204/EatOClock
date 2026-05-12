@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace Menu_Service.Controllers;
 
 [ApiController]
-[Route("menu")]
+[Route("api/v1/menu")]
 
 public class MenuController : ControllerBase
 {

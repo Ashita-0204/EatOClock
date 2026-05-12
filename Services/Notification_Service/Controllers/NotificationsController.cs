@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace Notification_Service.Controllers;
 
 [ApiController]
-[Route("api/notifications")]
+[Route("api/v1/notifications")]
 public class NotificationsController : ControllerBase
 {
     private readonly INotificationService _service;

@@ -9,7 +9,7 @@ using Auth_Service.Interfaces;
 namespace Auth_Service.Controllers;
 
 [ApiController]
-[Route("api/auth")]
+[Route("api/v1/auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;

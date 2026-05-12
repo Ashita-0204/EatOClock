@@ -90,5 +90,6 @@ app.UseSwaggerUI(c =>
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", service = "Menu-Service", time = DateTime.UtcNow }));
+app.MapGet("/api/v1/menu/health", () => Results.Ok(new { status = "Healthy", service = "Menu-Service", version = "v1", time = DateTime.UtcNow }));
 app.MapControllers();
 app.Run();

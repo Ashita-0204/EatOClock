@@ -87,10 +87,18 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+try
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        Console.WriteLine("Applying Order migrations...");
+        await db.Database.MigrateAsync();
+    }
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Error during Order migrations: {ex.Message}");
 }
 
 app.UseSwagger();
@@ -108,5 +116,7 @@ app.MapGet("/health", () => Results.Ok(new
     service = "Order-Service",
     time = DateTime.UtcNow
 }));
+
+app.MapGet("/api/v1/orders/health", () => Results.Ok(new { status = "Healthy", service = "Order-Service", version = "v1", time = DateTime.UtcNow }));
 
 app.Run();
