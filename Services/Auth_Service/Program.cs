@@ -145,6 +145,8 @@ try
         }
 
         // Fix and normalize all existing users to ensure they can login
+        // Commented out to prevent massive startup delays which cause Render 502 errors
+        /*
         Console.WriteLine("Starting user normalization and security stamp fix...");
         var allUsers = await userManager.Users.ToListAsync();
         int fixedCount = 0;
@@ -174,6 +176,8 @@ try
             }
         }
         Console.WriteLine($"User normalization complete. Fixed {fixedCount} users.");
+        */
+
     }
 }
 catch (Exception ex)
