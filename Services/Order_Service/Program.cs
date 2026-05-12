@@ -11,8 +11,9 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
-
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
+        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "orders")));
+        
 var jwt = builder.Configuration.GetSection("Jwt");
 var key = jwt["Key"] ?? throw new Exception("JWT Key missing");
 var issuer = jwt["Issuer"] ?? throw new Exception("JWT Issuer missing");

@@ -13,8 +13,9 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
-
+    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
+        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "delivery")));
+        
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
 builder.Services.AddAuthentication(o =>
