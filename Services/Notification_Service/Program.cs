@@ -12,8 +12,7 @@ using Notification_Service.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
-        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "notifications")));
+    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
@@ -35,7 +34,7 @@ builder.Services.AddAuthentication(o =>
         ValidateLifetime = true,
         ClockSkew = TimeSpan.Zero
     };
-    // Allow SignalR to use JWT from query string
+    // SignalR sends JWT via query string during WebSocket upgrade
     o.Events = new JwtBearerEvents
     {
         OnMessageReceived = ctx =>
@@ -50,6 +49,23 @@ builder.Services.AddAuthentication(o =>
 });
 
 builder.Services.AddAuthorization();
+
+// SignalR: allow the gateway origin so the WebSocket upgrade CORS check passes.
+// The gateway URL is supplied via env var on Render; falls back to localhost for dev.
+var gatewayOrigin = builder.Configuration["Gateway:Origin"] ?? "http://localhost:5000";
+var frontendOrigin = builder.Configuration["Frontend:Origin"] ?? "http://localhost:4200";
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SignalRPolicy", policy =>
+    {
+        policy.WithOrigins(gatewayOrigin, frontendOrigin)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
 builder.Services.AddSignalR();
 builder.Services.AddScoped<INotificationService, NotificationServiceImpl>();
 builder.Services.AddSingleton<IEmailService, EmailService>();
@@ -77,12 +93,13 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 var app = builder.Build();
+
+// Trust the reverse proxy headers Render sets (X-Forwarded-For / X-Forwarded-Proto)
 app.UseForwardedHeaders(new ForwardedHeadersOptions
 {
     ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
 });
-// Auto-migrate on startup
-// Auto-migrate on startup
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -92,7 +109,6 @@ using (var scope = app.Services.CreateScope())
     }
     catch (Npgsql.PostgresException ex) when (ex.SqlState == "42P07")
     {
-        // Tables already exist but migration history was missing — insert the record manually
         var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
         logger.LogWarning("Migration already applied (tables exist). Inserting migration history record...");
 
@@ -109,6 +125,7 @@ using (var scope = app.Services.CreateScope())
 
 app.UseSwagger();
 app.UseSwaggerUI();
+app.UseCors("SignalRPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

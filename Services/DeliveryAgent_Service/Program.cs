@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.OpenApi.Models;
 using DeliveryAgent_Service.Data;
 using DeliveryAgent_Service.Hubs;
@@ -11,12 +12,9 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -- Database ------------------------------------------------------------------
 builder.Services.AddDbContext<AppDbContext>(o =>
-    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"],
-        x => x.MigrationsHistoryTable("__EFMigrationsHistory", "delivery")));
+    o.UseNpgsql(builder.Configuration["ConnectionStrings:DefaultConnection"]));
 
-// -- JWT Auth ------------------------------------------------------------------
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "mysecretkey1234567890mysecretkey1234567890";
 
 builder.Services.AddAuthentication(o =>
@@ -38,7 +36,7 @@ builder.Services.AddAuthentication(o =>
         ClockSkew                = TimeSpan.Zero
     };
 
-    // Allow SignalR to read token from query string
+    // SignalR sends JWT via query string during WebSocket upgrade
     o.Events = new JwtBearerEvents
     {
         OnMessageReceived = ctx =>
@@ -53,10 +51,22 @@ builder.Services.AddAuthentication(o =>
 
 builder.Services.AddAuthorization();
 
-// -- SignalR -------------------------------------------------------------------
-builder.Services.AddSignalR();
+// SignalR: allow the gateway origin so the WebSocket upgrade CORS check passes.
+var gatewayOrigin = builder.Configuration["Gateway:Origin"] ?? "http://localhost:5000";
+var frontendOrigin = builder.Configuration["Frontend:Origin"] ?? "http://localhost:4200";
 
-// -- App Services --------------------------------------------------------------
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("SignalRPolicy", policy =>
+    {
+        policy.WithOrigins(gatewayOrigin, frontendOrigin)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
+    });
+});
+
+builder.Services.AddSignalR();
 builder.Services.AddScoped<IAgentService, AgentServiceImpl>();
 builder.Services.AddControllers()
     .AddJsonOptions(opts =>
@@ -65,7 +75,6 @@ builder.Services.AddControllers()
     });
 builder.Services.AddEndpointsApiExplorer();
 
-// -- Swagger -------------------------------------------------------------------
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "EatOClock DeliveryAgent API", Version = "v1" });
@@ -89,7 +98,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// -- Migrate on startup --------------------------------------------------------
+// Trust the reverse proxy headers Render sets
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -105,6 +119,7 @@ app.UseSwaggerUI(c =>
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));
 
+app.UseCors("SignalRPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();

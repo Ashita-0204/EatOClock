@@ -10,15 +10,9 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// -- EF Core (Postgres) ----------------------------------------------------
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"),
-        x => {
-            x.MigrationsHistoryTable("__EFMigrationsHistory", "orders");
-            x.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null);
-        }));
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// -- JWT -------------------------------------------------------------------
 var jwt = builder.Configuration.GetSection("Jwt");
 var key = jwt["Key"] ?? throw new Exception("JWT Key missing");
 var issuer = jwt["Issuer"] ?? throw new Exception("JWT Issuer missing");
@@ -42,16 +36,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 
-// -- Services --------------------------------------------------------------
+// URLs are supplied via env vars on Render:
+//   Services__NotificationService=https://eatoclock-notification.onrender.com
+//   Services__RestaurantService=https://eatoclock-restaurant.onrender.com
+// Locally they fall back to the docker-compose hostnames.
+var notificationUrl = builder.Configuration["Services:NotificationService"]
+                      ?? "http://notification-service:8080";
+var restaurantUrl   = builder.Configuration["Services:RestaurantService"]
+                      ?? "http://restaurant-service:8080";
+
 builder.Services.AddHttpClient("NotificationService", client =>
 {
-    // Use the docker network hostname and port
-    client.BaseAddress = new Uri("http://notification-service:8080");
+    client.BaseAddress = new Uri(notificationUrl);
 });
 
 builder.Services.AddHttpClient("RestaurantService", client =>
 {
-    client.BaseAddress = new Uri("http://restaurant-service:8080");
+    client.BaseAddress = new Uri(restaurantUrl);
 });
 
 builder.Services.AddScoped<IOrderService, OrderServiceImpl>();
@@ -61,7 +62,6 @@ builder.Services.AddControllers()
         opts.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
     });
 
-// -- Swagger ---------------------------------------------------------------
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -86,16 +86,12 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// -- Auto Migration --------------------------------------------------------
-/*
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await db.Database.MigrateAsync();
 }
-*/
 
-// -- Middleware ------------------------------------------------------------
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
