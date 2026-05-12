@@ -14,6 +14,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
         {
             e.HasKey(r => r.ReviewId);
             e.HasIndex(r => r.OrderId).IsUnique();   // UC-52: one review per order
+            e.HasIndex(r => r.RestaurantId);         // Optimize avg rating query
             e.Property(r => r.CustomerId).IsRequired();
         });
     }

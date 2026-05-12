@@ -38,13 +38,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddHttpContextAccessor();
 
 // URLs are supplied via env vars on Render:
-//   Services__NotificationService=https://eatoclock-notification.onrender.com
+//   Services__NotificationService=https://eatoclock-notif.onrender.com
 //   Services__RestaurantService=https://eatoclock-restaurant.onrender.com
 // Locally they fall back to the docker-compose hostnames.
 var notificationUrl = builder.Configuration["Services:NotificationService"]
-                      ?? "http://notification-service:8080";
+                      ?? "https://eatoclock-notif.onrender.com";
 var restaurantUrl   = builder.Configuration["Services:RestaurantService"]
-                      ?? "http://restaurant-service:8080";
+                      ?? "https://eatoclock-restaurant.onrender.com";
 
 builder.Services.AddHttpClient("NotificationService", client =>
 {
