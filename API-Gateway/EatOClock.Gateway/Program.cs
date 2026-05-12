@@ -1,4 +1,14 @@
+using Microsoft.AspNetCore.HttpOverrides;
+
 var builder = WebApplication.CreateBuilder(args);
+
+// ── Forward headers from Render's proxy ──────────────────────────────────────
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
 
 // ── CORS ─────────────────────────────────────────────────────────────────────
 var corsOrigins = builder.Configuration
@@ -23,6 +33,8 @@ builder.Services
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
 
 var app = builder.Build();
+
+app.UseForwardedHeaders();
 
 app.UseCors("FrontendPolicy");
 
