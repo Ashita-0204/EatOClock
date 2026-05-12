@@ -113,8 +113,7 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "EatOClock DeliveryAgent API v1");
-    c.RoutePrefix = string.Empty;
+    c.SwaggerEndpoint("v1/swagger.json", "EatOClock DeliveryAgent API v1");
 });
 
 app.MapGet("/health", () => Results.Ok(new { status = "Healthy", time = DateTime.UtcNow }));

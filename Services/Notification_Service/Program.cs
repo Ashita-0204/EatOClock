@@ -124,7 +124,10 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseSwagger();
-app.UseSwaggerUI();
+app.UseSwaggerUI(c =>
+{
+    c.SwaggerEndpoint("v1/swagger.json", "EatOClock Notification API v1");
+});
 app.UseCors("SignalRPolicy");
 app.UseAuthentication();
 app.UseAuthorization();

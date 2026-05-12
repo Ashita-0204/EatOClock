@@ -151,8 +151,7 @@ using (var scope = app.Services.CreateScope())
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "Cart API V1");
-    c.RoutePrefix = "";
+    c.SwaggerEndpoint("v1/swagger.json", "Cart API V1");
 });
 
 app.UseAuthentication();
