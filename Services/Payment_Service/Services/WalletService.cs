@@ -9,7 +9,7 @@ namespace Payment_Service.Services;
 
 public class WalletService(AppDbContext db, IRazorpayService razorpay) : IWalletService
 {
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // -- Helpers --------------------------------------------------------------
 
     /// <summary>
     /// Returns the wallet ID for this customer, creating the wallet row if it
@@ -43,7 +43,7 @@ public class WalletService(AppDbContext db, IRazorpayService razorpay) : IWallet
         return data == null ? (Guid.Empty, 0m) : (data.WalletId, data.Balance);
     }
 
-    // ── Public API ───────────────────────────────────────────────────────────
+    // -- Public API -----------------------------------------------------------
 
     public async Task<WalletResponse> GetBalanceAsync(string customerId)
     {
@@ -71,7 +71,7 @@ public class WalletService(AppDbContext db, IRazorpayService razorpay) : IWallet
         var (_, currentBalance) = await GetWalletDataAsync(customerId);
         var newBalance = currentBalance + req.Amount;
 
-        // FIX: targeted UPDATE — no tracked entity, no concurrency token check.
+        //  targeted UPDATE — no tracked entity, no concurrency token check.
         await db.Wallets
             .Where(w => w.WalletId == walletId)
             .ExecuteUpdateAsync(s => s.SetProperty(w => w.Balance, newBalance));

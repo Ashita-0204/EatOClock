@@ -21,6 +21,7 @@ public static class HealthCheckExtensions
 
     /// <summary>
     /// Maps /health with a JSON response.
+    /// IEndpoint -- used for defining and registering HTTP endpoints
     /// </summary>
     public static IEndpointRouteBuilder MapServiceHealthChecks(this IEndpointRouteBuilder endpoints)
     {

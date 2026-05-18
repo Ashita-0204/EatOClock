@@ -27,8 +27,8 @@ public class AuthServiceImpl : IAuthService
     public AuthServiceImpl(UserManager<User> userManager, RoleManager<IdentityRole> roleManager, 
                        IConfiguration config, AppDbContext context)
     {
-        _userManager = userManager;
-        _roleManager = roleManager;
+        _userManager = userManager; // user data
+        _roleManager = roleManager; //role operation
         _config = config;
         _context = context;
     }
@@ -51,7 +51,7 @@ public class AuthServiceImpl : IAuthService
         return new AuthResult { Success = false, Message = "Invalid role selected" };
     }
  
-    var roleName = roleEnum.ToString(); // "Customer", "RestaurantOwner", or "DeliveryAgent"
+    var roleName = roleEnum.ToString(); // int to -"Customer", "RestaurantOwner", or "DeliveryAgent"
  
     if (!await _roleManager.RoleExistsAsync(roleName))
         return new AuthResult { Success = false, Message = "Invalid role selected" };

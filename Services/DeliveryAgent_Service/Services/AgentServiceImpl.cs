@@ -58,7 +58,7 @@ public class AgentServiceImpl(AppDbContext db, IHubContext<LocationHub> hub) : I
         return new(true, "Registered successfully. Await admin verification.", ToDto(agent));
     }
 
-    // -- UC-43 / Get profile ---------------------------------------------------
+    // / Get profile ---------------------------------------------------
 
     public async Task<ApiResponse<AgentDTOs>> GetByIdAsync(Guid agentId)
     {

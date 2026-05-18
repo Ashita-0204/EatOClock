@@ -47,7 +47,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// ── CORS ─────────────────────────────────────────────────────────────────────
+// -- CORS ---------------------------------------------------------------------
 // Allow calls from the Angular dev server and from the API gateway.
 // Extend AllowedOrigins in appsettings for production.
 var corsOrigins = builder.Configuration
@@ -65,7 +65,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials();
     });
 });
-// ─────────────────────────────────────────────────────────────────────────────
+// -----------------------------------------------------------------------------
 
 builder.Services.AddScoped<IAuthService, AuthServiceImpl>();
 builder.Services.AddControllers();
@@ -143,41 +143,6 @@ try
             var resetToken = await userManager.GeneratePasswordResetTokenAsync(adminUser);
             await userManager.ResetPasswordAsync(adminUser, resetToken, adminPassword);
         }
-
-        // Fix and normalize all existing users to ensure they can login
-        // Commented out to prevent massive startup delays which cause Render 502 errors
-        /*
-        Console.WriteLine("Starting user normalization and security stamp fix...");
-        var allUsers = await userManager.Users.ToListAsync();
-        int fixedCount = 0;
-        foreach (var user in allUsers)
-        {
-            bool changed = false;
-            if (string.IsNullOrEmpty(user.SecurityStamp))
-            {
-                await userManager.UpdateSecurityStampAsync(user);
-                changed = true;
-            }
-            
-            var normalizedEmail = userManager.NormalizeEmail(user.Email!);
-            var normalizedName = userManager.NormalizeName(user.UserName!);
-            
-            if (user.NormalizedEmail != normalizedEmail || user.NormalizedUserName != normalizedName)
-            {
-                user.NormalizedEmail = normalizedEmail;
-                user.NormalizedUserName = normalizedName;
-                changed = true;
-            }
-
-            if (changed)
-            {
-                await userManager.UpdateAsync(user);
-                fixedCount++;
-            }
-        }
-        Console.WriteLine($"User normalization complete. Fixed {fixedCount} users.");
-        */
-
     }
 }
 catch (Exception ex)

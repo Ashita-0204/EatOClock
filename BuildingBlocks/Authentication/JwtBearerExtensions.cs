@@ -7,12 +7,13 @@ using System.Text;
 namespace Authentication;
 public static class JwtBearerExtensions
 {
+    // IService as its an custom extension method
     public static IServiceCollection AddCustomJwtAuthentication(this IServiceCollection services, IConfiguration config)
     {
         var jwtKey = config["Jwt:Key"];
         var issuer = config["Jwt:Issuer"];
         var audience = config["Jwt:Audience"];
-        var key = Encoding.ASCII.GetBytes(jwtKey);
+        var key = Encoding.ASCII.GetBytes(jwtKey); // to a byte arr
 
         services.AddAuthentication(options =>
         {

@@ -60,7 +60,8 @@ public class AgentController(IAgentService svc) : ControllerBase
 
     //  Toggle availability --------------------------------------------
     [HttpPut("{id:guid}/availability")]
-    [Authorize(Roles = "DeliveryAgent,Admin")]    public async Task<IActionResult> ToggleAvailability(Guid id)
+    [Authorize(Roles = "DeliveryAgent,Admin")]   
+     public async Task<IActionResult> ToggleAvailability(Guid id)
     {
         var result = await svc.ToggleAvailabilityAsync(id, UserId);
         return result.Success ? Ok(result) : BadRequest(result);

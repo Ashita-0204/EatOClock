@@ -24,7 +24,7 @@ public static class LoggingExtensions
     }
 
     /// <summary>
-    /// Configures Serilog for WebApplicationBuilder (preferred in .NET 8 minimal API style).
+    /// Configures Serilog for WebApplicationBuilder, add service specific metadata
     /// </summary>
     public static WebApplicationBuilder UseCustomSerilog(this WebApplicationBuilder builder, string serviceName)
     {

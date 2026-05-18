@@ -72,15 +72,6 @@ builder.Services.AddSwaggerGen(c =>
 
 var app = builder.Build();
 
-// Run migrations disabled to prevent conflicts and hangs (handled by restaurant-service)
-/*
-using (var scope = app.Services.CreateScope())
-{
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    await db.Database.MigrateAsync();
-}
-*/
-
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {

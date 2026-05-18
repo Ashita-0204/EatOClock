@@ -10,7 +10,7 @@ namespace Payment_Service.Services;
 public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletService walletService)
     : IPaymentService
 {
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // -- Helpers --------------------------------------------------------------
 
     private static PaymentResponse ToResponse(Payment p) =>
         new(p.PaymentId, p.OrderId, p.CustomerId, p.Amount, p.Status,
@@ -19,7 +19,7 @@ public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletS
     private Task<Payment?> FetchAsync(Guid paymentId) =>
         db.Payments.AsNoTracking().FirstOrDefaultAsync(p => p.PaymentId == paymentId);
 
-    // ── Process payment ──────────────────────────────────────────────────────
+    // -- Process payment ------------------------------------------------------
 
     public async Task<(PaymentResponse payment, string? razorpayOrderId)>
         ProcessPaymentAsync(string customerId, ProcessPaymentRequest req)
@@ -120,7 +120,7 @@ public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletS
         return (ToResponse(payment), rzpOrderId);
     }
 
-    // ── Refund ───────────────────────────────────────────────────────────────
+    // -- Refund ---------------------------------------------------------------
 
     public async Task<PaymentResponse> RefundPaymentAsync(
         string requesterId, bool isAdmin, RefundRequest req)
@@ -155,7 +155,7 @@ public class PaymentService(AppDbContext db, IRazorpayService razorpay, IWalletS
         return ToResponse((await FetchAsync(payment.PaymentId))!);
     }
 
-    // ── Queries ──────────────────────────────────────────────────────────────
+    // -- Queries --------------------------------------------------------------
 
     public async Task<PaymentResponse?> GetByOrderIdAsync(string customerId, Guid orderId)
     {

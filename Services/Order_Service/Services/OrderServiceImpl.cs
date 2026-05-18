@@ -19,7 +19,7 @@ public class OrderServiceImpl : IOrderService
         _httpContextAccessor = httpContextAccessor;
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // -- Helpers --------------------------------------------------------------
 
     private static OrderDTOs ToDto(Order o) => new(
         o.OrderId, o.CustomerId, o.RestaurantId, o.RestaurantName, o.DeliveryAgentId,
@@ -39,7 +39,7 @@ public class OrderServiceImpl : IOrderService
     private async Task<Order> RequireAsync(Guid id) =>
         await FetchAsync(id) ?? throw new KeyNotFoundException("Order not found.");
 
-    // ── UC-29: Place order ───────────────────────────────────────────────────
+    // -- UC-29: Place order ---------------------------------------------------
 
     public async Task<OrderDTOs> PlaceOrderAsync(string customerId, PlaceOrderRequest req)
     {
@@ -89,7 +89,7 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ── UC-30: Get order by id ───────────────────────────────────────────────
+    // -- UC-30: Get order by id -----------------------------------------------
 
     public async Task<OrderDTOs?> GetByIdAsync(Guid orderId, string callerId, string callerRole)
     {
@@ -99,7 +99,7 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ── UC-32: Order history ─────────────────────────────────────────────────
+    // --  Order history -------------------------------------------------
 
     public async Task<List<OrderDTOs>> GetCustomerOrdersAsync(string customerId)
     {
@@ -112,7 +112,7 @@ public class OrderServiceImpl : IOrderService
         return orders.Select(ToDto).ToList();
     }
 
-    // ── UC-34: Restaurant orders ─────────────────────────────────────────────
+    // --  Restaurant orders ---------------------------------------------
 
     public async Task<List<OrderDTOs>> GetRestaurantOrdersAsync(Guid restaurantId)
     {
@@ -125,7 +125,7 @@ public class OrderServiceImpl : IOrderService
         return orders.Select(ToDto).ToList();
     }
 
-    // ── UC-35: Admin all orders ──────────────────────────────────────────────
+    // --  Admin all orders ----------------------------------------------
     public async Task<List<OrderDTOs>> GetAllOrdersAsync()
     {
         var orders = await _db.Orders
@@ -136,7 +136,7 @@ public class OrderServiceImpl : IOrderService
         return orders.Select(ToDto).ToList();
     }
 
-    // ── UC: Agent available orders ───────────────────────────────────────────
+    // --  Agent available orders -------------------------------------------
     public async Task<List<OrderDTOs>> GetAvailableOrdersAsync()
     {
         var orders = await _db.Orders
@@ -171,7 +171,7 @@ public class OrderServiceImpl : IOrderService
         _ => 0
     };
 
-    // ── UC-30/34: Update status ──────────────────────────────────────────────
+    // -- UC-30/34: Update status ----------------------------------------------
 
     public async Task<OrderDTOs> UpdateStatusAsync(
         Guid orderId, UpdateStatusRequest req, string callerId, string callerRole)
@@ -209,7 +209,7 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ── UC-31: Cancel order ──────────────────────────────────────────────────
+    // -- UC-31: Cancel order --------------------------------------------------
 
     public async Task<OrderDTOs> CancelOrderAsync(Guid orderId, string customerId)
     {
@@ -229,7 +229,7 @@ public class OrderServiceImpl : IOrderService
         return ToDto(order);
     }
 
-    // ── UC-33: Reorder ───────────────────────────────────────────────────────
+    // -- UC-33: Reorder -------------------------------------------------------
 
     public async Task<OrderDTOs> ReorderAsync(Guid originalOrderId, string customerId)
     {
@@ -250,7 +250,7 @@ public class OrderServiceImpl : IOrderService
         return await PlaceOrderAsync(customerId, req);
     }
 
-    // ── UC-36: Assign agent ──────────────────────────────────────────────────
+    // -- UC-36: Assign agent --------------------------------------------------
 
     public async Task<OrderDTOs> AssignAgentAsync(Guid orderId, AssignAgentRequest req)
     {

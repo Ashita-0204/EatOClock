@@ -6,20 +6,6 @@ using Notification_Service.Interfaces;
 
 namespace Notification_Service.Services;
 
-/*
- * FREE SMS via Twilio Trial Account
- * -----------------------------------
- * 1. Sign up at https://www.twilio.com (no credit card for trial)
- * 2. Get a free Twilio phone number from the console.
- * 3. Trial limit: can only send to verified numbers (add yours in console).
- * 4. Free credit: ~$15 USD (~hundreds of SMS messages).
- * 5. Set in appsettings / docker env:
- *      Twilio__AccountSid  = ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
- *      Twilio__AuthToken   = your-auth-token
- *      Twilio__FromNumber  = +1415XXXXXXX   (your Twilio number)
- *
- * To go live: just upgrade account - same code, no changes needed.
- */
 public class SmsService : ISmsService
 {
     private readonly IConfiguration _config;
