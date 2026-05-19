@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace Review_Service.Controllers;
 
 [ApiController]
-[Route("api/v1/reviews")]
+[Route("api/reviews")]
 public class ReviewsController(IReviewService svc) : ControllerBase
 {
     private string UserId => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
@@ -27,7 +27,7 @@ public class ReviewsController(IReviewService svc) : ControllerBase
         Ok(await svc.GetRestaurantReviewsAsync(rId));
 
     // UC-54: GET /api/v1/reviews/agent/{aId}
-    [HttpGet("agent/{aId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner")]
+    [HttpGet("agent/{aId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner,DeliveryAgent")]
     public async Task<IActionResult> AgentReviews(Guid aId) =>
         Ok(await svc.GetAgentReviewsAsync(aId));
 
@@ -61,7 +61,7 @@ public class ReviewsController(IReviewService svc) : ControllerBase
         Ok(await svc.GetAvgRestaurantRatingAsync(rId));
 
     // UC-56: GET /api/v1/reviews/avg/agent/{aId}
-    [HttpGet("avg/agent/{aId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner")]
+    [HttpGet("avg/agent/{aId:guid}"),Authorize(Roles = "Admin,Customer,RestaurantOwner,DeliveryAgent")]
     public async Task<IActionResult> AvgAgent(Guid aId) =>
         Ok(await svc.GetAvgAgentRatingAsync(aId));
 }

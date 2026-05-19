@@ -61,10 +61,10 @@ Traditional monolithic food delivery backends are hard to scale, deploy independ
 | EventBus (Stub / Foundation)                  | ✅ Stub in place |
 | API Gateway (YARP)                            | ✅ Implemented   |
 | Integration Tests                             | ✅ Implemented   |
-| Cart Service                                  | 🔜 Roadmap       |
-| Payment / Wallet Service                      | 🔜 Roadmap       |
-| Notification Service                          | 🔜 Roadmap       |
-| Review & Ratings Service                      | 🔜 Roadmap       |
+| Cart Service                                  | ✅ Implemente    |
+| Payment / Wallet Service                      | ✅ Implemented   |
+| Notification Service                          | ✅ Implemented   |
+| Review & Ratings Service                      | ✅ Implemented   |
 
 ### Architecture Philosophy
 
@@ -78,23 +78,21 @@ Traditional monolithic food delivery backends are hard to scale, deploy independ
 
 ## 🛠️ Tech Stack
 
-| Category             | Technology                                             |
-| -------------------- | ------------------------------------------------------ |
-| **Runtime**          | .NET 8 / ASP.NET Core Web API                          |
-| **Language**         | C# 12                                                  |
-| **API Gateway**      | YARP (Yet Another Reverse Proxy)                       |
-| **ORM**              | Entity Framework Core 8                                |
-| **Database**         | PostgreSQL (hosted on Supabase)                        |
-| **Real-time**        | ASP.NET Core SignalR                                   |
-| **Caching**          | Redis (IRedisCache Building Block)                     |
-| **Authentication**   | JWT Bearer Tokens (custom middleware building block)   |
-| **Logging**          | Serilog (structured logging building block)            |
-| **Health Checks**    | ASP.NET Core Health Checks (building block)            |
-| **Event Bus**        | Custom EventBus stub (foundation for future messaging) |
-| **Containerisation** | Docker + Docker Compose                                |
-| **Code Quality**     | SonarQube analysis                                     |
-| **Testing**          | xUnit / NUnit (EatOClock.Tests project)                |
-| **API Docs**         | Swagger / OpenAPI (per service)                        |
+| Technology              | Purpose                                     |
+| ----------------------- | ------------------------------------------- |
+| ASP.NET Core 8 Web API  | Backend Microservices                       |
+| YARP Reverse Proxy      | API Gateway & Routing                       |
+| SignalR                 | Real-Time Notifications & Location Tracking |
+| Supabase (PostgreSQL)   | Primary Database (per-service schemas)      |
+| Entity Framework Core   | ORM & Migrations                            |
+| Redis 7                 | Distributed Caching (Cart, Sessions)        |
+| Razorpay                | Payment Gateway Integration                 |
+| JWT (ASP.NET Identity)  | Authentication & Authorization              |
+| Docker & Docker Compose | Containerization & Orchestration            |
+| Twilio                  | SMS Notifications                           |
+| SMTP (Gmail)            | Email Notifications                         |
+| xUnit                   | Unit & Integration Testing                  |
+| Render.com              | Cloud Deployment                            |
 
 ---
 
@@ -103,37 +101,48 @@ Traditional monolithic food delivery backends are hard to scale, deploy independ
 EatOClock follows a **microservices architecture** where every service is independently deployable, owns its own data store, and communicates through well-defined HTTP contracts routed via the API Gateway.
 
 ```
-Clients (Browser / Mobile)
-        │
-        ▼
-┌──────────────────────────────┐
-│    API Gateway (YARP :5000)  │  ← JWT Validation, Rate Limiting, Routing
-└────────────┬─────────────────┘
-             │  routes to →
-    ┌─────────────────────────────────────────────┐
-    │         Microservices Layer                  │
-    ├──────────┬──────────┬───────────┬────────────┤
-    │Auth Svc  │Rest. Svc │Menu Svc   │Order Svc   │  Delivery Svc
-    │:8081     │:8082     │:8083      │:8084       │  :8085
-    └────┬─────┴────┬─────┴────┬──────┴────┬───────┘
-         │          │          │           │
-    ┌────▼──┐ ┌─────▼──┐ ┌────▼──┐  ┌────▼──────┐
-    │Auth DB│ │Rest. DB│ │Menu DB│  │Order DB   │ Delivery DB
-    │(PG)   │ │(PG)    │ │(PG)   │  │(PG)       │ (PG)
-    └───────┘ └────────┘ └───────┘  └───────────┘
-         │
-    ┌────▼─────────────────────────────────────┐
-    │         Building Blocks (Shared)          │
-    │  JWT Auth · Redis Cache · EventBus        │
-    │  Serilog Logging · Health Checks          │
-    └───────────────────────────────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT LAYER                                    │
+│                  Angular Frontend (localhost:4200 / Render)                  │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │  HTTP/HTTPS + WebSocket (SignalR)
+                                 │
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│                         API GATEWAY  (YARP)                                  │
+│                    Port 5000  |  eatoclock-gateway.onrender.com              │
+│     • Request Routing     • CORS (Angular origins)     • JWT Forwarding      │
+│     • Legacy-path rewrite (/api/auth → /api/v1/auth)                        │
+└──┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────────────────┘
+   │      │      │      │      │      │      │      │      │
+ Auth  Rest.  Menu  Cart  Order  Pay  Deliv  Review Notif
+ :5001 :5002  :5003 :5004 :5005 :5006 :5007  :5008  :5009
+   │      │      │      │      │      │      │      │      │
+   └──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+                              │
+            ┌─────────────────┼──────────────────┐
+            │                 │                  │
+   ┌────────▼────────┐  ┌─────▼──────┐  ┌───────▼────────┐
+   │  Supabase PG    │  │  Redis 7   │  │   Razorpay     │
+   │  (per schema)   │  │  :6379     │  │   Payment GW   │
+   │  auth_custom    │  │ Cart Cache │  │                │
+   │  restaurants    │  │ Sessions   │  │  Wallet API    │
+   │  orders         │  └────────────┘  └────────────────┘
+   │  payments       │
+   │  delivery       │  ┌────────────────────────────────┐
+   │  analytics      │  │     External Services          │
+   │  notifications  │  │  • Gmail SMTP (Email)          │
+   └─────────────────┘  │  • Twilio (SMS)                │
+                        │  • SignalR Hubs (WS)           │
+                        └────────────────────────────────┘
+
 ```
 
 ---
 
 ## 🔬 Microservices Overview
 
-### 1. Auth Service (:8081)
+### 1. Auth Service (:5051)
 
 Handles all identity concerns: user registration, login, JWT issuance & refresh, profile management, password change, and account deactivation. Users carry a `Role` enum (`CUSTOMER / OWNER / AGENT / ADMIN`) that downstream services read from the JWT claims.
 
@@ -141,7 +150,7 @@ Handles all identity concerns: user registration, login, JWT issuance & refresh,
 
 ---
 
-### 2. Restaurant Service (:8082)
+### 2. Restaurant Service (:5052)
 
 Manages restaurant profiles. Stores GPS coordinates for geo-proximity search, cuisine tags, delivery radius, minimum order amount, and estimated delivery time. Restaurants require **Admin approval** before becoming visible to customers.
 
@@ -149,7 +158,7 @@ Manages restaurant profiles. Stores GPS coordinates for geo-proximity search, cu
 
 ---
 
-### 3. Menu Service (:8083)
+### 3. Menu Service (:5053)
 
 Owns the full menu structure for every restaurant. Organises items under `MenuCategory` entities. Items carry price, discounted price, availability toggle, veg/non-veg flag, calories, and tags. Supports keyword search and veg-only filtering.
 
@@ -157,7 +166,7 @@ Owns the full menu structure for every restaurant. Organises items under `MenuCa
 
 ---
 
-### 4. Order Service (:8084)
+### 4. Order Service (:5054)
 
 The **central orchestration service**. Converts a placed order into an `Order` record with an immutable `OrderItem` snapshot. Manages the complete status lifecycle: `PLACED → CONFIRMED → PREPARING → PICKED_UP → DELIVERED / CANCELLED`. Calls the Delivery Service to assign agents.
 
@@ -165,7 +174,7 @@ The **central orchestration service**. Converts a placed order into an `Order` r
 
 ---
 
-### 5. Delivery Agent Service (:8085)
+### 5. Delivery Agent Service (:5055)
 
 Handles agent registration, availability toggling, order assignment, GPS location updates, delivery records, and ratings. Exposes a **SignalR Hub (`LocationHub`)** for real-time location streaming to customers.
 
@@ -242,59 +251,351 @@ Single ingress point. Reads YARP route config from `appsettings.json`, validates
 
 ---
 
-## 📊 System Architectural Diagram
-
-![System Architecture](01_system_architecture.png)
-
----
-
-## 📋 Use Case Diagram
-
-![Use Case Diagram](05_use_case.png)
-
----
-
-## 🔄 Microservices Communication Flow
-
-![Communication Flow](02_comm_flow.png)
-
----
-
-## 🗃️ ER Diagram
-
-![ER Diagram](03_er_diagram.png)
-
----
-
-## 🌊 Project Flow Diagram
-
-![Project Flow](04_project_flow.png)
-
----
-
-## 🏛️ Architecture Layers (Per Microservice)
-
-![Architecture Layers](05_architecture_layers.png)
-
-Every microservice follows the same 5-layer pattern:
+## 🏗️ System Architecture Diagram
 
 ```
-┌──────────────────────────────────┐
-│  Controller Layer                │  HTTP surface · DTO in/out · [Authorize] attributes
-├──────────────────────────────────┤
-│  Service Interface (IXxxService) │  Business contract · DI target
-├──────────────────────────────────┤
-│  Service Implementation          │  Business logic · Orchestration · Cross-service calls
-├──────────────────────────────────┤
-│  Data Access (EF Core DbContext) │  LINQ queries · Migrations · DbSet<T>
-├──────────────────────────────────┤
-│  Domain Models (POCOs)           │  C# entities mapped to PostgreSQL tables
-└──────────────────────────────────┘
-         ↑ shared by all services ↑
-┌──────────────────────────────────┐
-│  Building Blocks                 │  JWT · Redis · EventBus · Serilog · HealthChecks
-└──────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT LAYER                                    │
+│                  Angular Frontend (localhost:4200 / Render)                  │
+└────────────────────────────────┬─────────────────────────────────────────────┘
+                                 │  HTTP/HTTPS + WebSocket (SignalR)
+                                 │
+┌────────────────────────────────▼─────────────────────────────────────────────┐
+│                         API GATEWAY  (YARP)                                  │
+│                    Port 5000  |  eatoclock-gateway.onrender.com              │
+│     • Request Routing     • CORS (Angular origins)     • JWT Forwarding      │
+│     • Legacy-path rewrite (/api/auth → /api/v1/auth)                        │
+└──┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────┬──────────────────┘
+   │      │      │      │      │      │      │      │      │
+ Auth  Rest.  Menu  Cart  Order  Pay  Deliv  Review Notif
+ :5001 :5002  :5003 :5004 :5005 :5006 :5007  :5008  :5009
+   │      │      │      │      │      │      │      │      │
+   └──────┴──────┴──────┴──────┴──────┴──────┴──────┴──────┘
+                              │
+            ┌─────────────────┼──────────────────┐
+            │                 │                  │
+   ┌────────▼────────┐  ┌─────▼──────┐  ┌───────▼────────┐
+   │  Supabase PG    │  │  Redis 7   │  │   Razorpay     │
+   │  (per schema)   │  │  :6379     │  │   Payment GW   │
+   │  auth_custom    │  │ Cart Cache │  │                │
+   │  restaurants    │  │ Sessions  │  │  Wallet API    │
+   │  orders         │  └────────────┘  └────────────────┘
+   │  payments       │
+   │  delivery       │  ┌────────────────────────────────┐
+   │  analytics      │  │     External Services          │
+   │  notifications  │  │  • Gmail SMTP (Email)          │
+   └─────────────────┘  │  • Twilio (SMS)               │
+                        │  • SignalR Hubs (WS)           │
+                        └────────────────────────────────┘
 ```
+
+---
+
+## 🔄 Microservice Communication Flow
+
+```
+┌──────────┐                    ┌──────────────────────┐
+│  Client  │                    │   API Gateway (YARP) │
+└────┬─────┘                    └──────────┬───────────┘
+     │                                     │
+     │  1. POST /api/v1/auth/login         │
+     ├────────────────────────────────────►│
+     │                               ┌─────▼──────────┐
+     │                               │  AuthService   │
+     │                               │  Validates     │
+     │                               │  Issues JWT    │
+     │                               └─────┬──────────┘
+     │  2. JWT { accessToken, refresh }    │
+     │◄────────────────────────────────────┤
+     │                                     │
+     │  3. POST /api/v1/cart/items (JWT)   │
+     ├────────────────────────────────────►│
+     │                               ┌─────▼──────────┐
+     │                               │  CartService   │
+     │                               │  Redis Cache   │
+     │                               └─────┬──────────┘
+     │  4. Cart State                      │
+     │◄────────────────────────────────────┤
+     │                                     │
+     │  5. POST /api/v1/orders (JWT)       │
+     ├────────────────────────────────────►│
+     │                               ┌─────▼──────────┐
+     │                               │  OrderService  │
+     │                               │  Saves to DB   │
+     │                               └──┬──────┬──────┘
+     │                                  │      │
+     │                       HTTP call  │      │ HTTP call
+     │                                  │      │
+     │                      ┌───────────▼┐  ┌──▼──────────────────┐
+     │                      │ Notif Svc  │  │  NotifSvc           │
+     │                      │ /order     │  │  /restaurant-alert  │
+     │                      └───────────┬┘  └──┬──────────────────┘
+     │                                  │      │
+     │                         ┌────────▼──────▼──────────┐
+     │                         │     SignalR Hub           │
+     │                         │ + Email (SMTP)            │
+     │                         │ + SMS (Twilio)            │
+     │                         └────────────────┬──────────┘
+     │  6. Real-time push (WS)                  │
+     │◄─────────────────────────────────────────┤
+     │                                          │
+     │  7. POST /api/v1/payments/process        │
+     ├────────────────────────────────────────► │
+     │                               ┌──────────▼──────┐
+     │                               │  PaymentService │
+     │                               │  Razorpay / Wlt │
+     │                               └─────────────────┘
+     │  Payment confirmation                    │
+     │◄─────────────────────────────────────────┤
+```
+
+---
+
+## 📊 Entity Relationship Diagram (All Services)
+
+```
+┌─────────────────────────┐
+│          User           │  (auth_custom schema)
+├─────────────────────────┤
+│ PK  Id (string/GUID)    │
+│     UserName            │
+│     Email               │
+│     PasswordHash        │
+│     FullName            │
+│     PhoneNumber         │
+│     Role (Identity)     │
+│     RefreshToken        │
+│     RefreshTokenExpiry  │
+│     IsActive            │
+│     CreatedAt           │
+└────────┬────────────────┘
+         │ 1:N (OwnerId / CustomerId / UserId across services)
+         │
+         ├──────────────────────────────────────────────────────┐
+         │                                                      │
+┌────────▼─────────────┐          ┌──────────────────────────┐ │
+│     Restaurant        │          │      DeliveryAgent        │ │
+├──────────────────────┤          ├──────────────────────────┤ │
+│ PK  Id (GUID)         │          │ PK  AgentId (GUID)       │ │
+│     Name              │          │     UserId (FK→User.Id)  │ │
+│     Description       │          │     FullName             │ │
+│     Cuisine           │          │     Phone / Email        │ │
+│     Address           │          │     VehicleType          │ │
+│     Latitude          │          │     VehicleNumber        │ │
+│     Longitude         │          │     CurrentLatitude      │ │
+│     Rating            │          │     CurrentLongitude     │ │
+│     ReviewCount       │          │     IsAvailable          │ │
+│     OwnerId (FK)      │          │     IsVerified           │ │
+│     IsApproved        │          │     AverageRating        │ │
+│     IsActive          │          │     TotalDeliveries      │ │
+│     OpeningTime       │          │     TotalEarnings        │ │
+│     ClosingTime       │          │     CreatedAt            │ │
+└─────────┬────────────┘          └─────────────┬────────────┘ │
+          │ 1:N                                  │ 1:N          │
+          │                                      │              │
+┌─────────▼────────────┐          ┌─────────────▼────────────┐ │
+│     MenuCategory      │          │      DeliveryRecord       │ │
+├──────────────────────┤          ├──────────────────────────┤ │
+│ PK  Id (GUID)         │          │ PK  DeliveryId (GUID)    │ │
+│     Name              │          │ FK  AgentId              │ │
+│     RestaurantId (FK) │          │     OrderId              │ │
+│     OwnerId           │          │     CustomerId           │ │
+└─────────┬────────────┘          │     PickupAddress        │ │
+          │ 1:N                   │     DeliveryAddress      │ │
+          │                       │     EarningsForDelivery  │ │
+┌─────────▼────────────┐          │     Status (enum)        │ │
+│      MenuItem         │          │     Rating / RatingNote  │ │
+├──────────────────────┤          │     AssignedAt           │ │
+│ PK  Id (GUID)         │          │     PickedUpAt           │ │
+│ FK  CategoryId        │          │     DeliveredAt          │ │
+│     RestaurantId      │          └──────────────────────────┘ │
+│     Name              │                                       │
+│     Description       │  ┌──────────────────────────────────┐ │
+│     Price (numeric)   │  │           Cart                   │ │
+│     ImageUrl          │  ├──────────────────────────────────┤ │
+│     IsAvailable       │  │ PK  CartId (GUID)                │ │
+│     IsVeg             │  │     CustomerId (FK→User.Id)◄─────┘ │
+│     CreatedAt         │  │     RestaurantId (FK)            │
+└─────────┬────────────┘  │     TotalPrice                   │
+          │ (snapshot)     │     CreatedAt / UpdatedAt        │
+          │                └──────────┬───────────────────────┘
+          │                           │ 1:N
+          │                ┌──────────▼───────────────────────┐
+          │                │          CartItem                 │
+          │                ├──────────────────────────────────┤
+          │                │ PK  ItemId (GUID)                │
+          └────────────────│ FK  CartId                       │
+           (MenuItemId)    │     MenuItemId (snapshot ref)    │
+                           │     Name / Price (snapshot)      │
+                           │     Quantity                     │
+                           │     Customization                │
+                           └──────────────────────────────────┘
+
+┌─────────────────────────┐          ┌────────────────────────────┐
+│         Order            │          │        PromoCode            │
+├─────────────────────────┤          ├────────────────────────────┤
+│ PK  OrderId (GUID)       │          │ PK  Id (GUID)              │
+│     CustomerId (FK)      │          │     Code                   │
+│     RestaurantId (FK)    │          │     DiscountPercent        │
+│     RestaurantName       │          │     IsActive               │
+│     DeliveryAgentId (FK) │          │     ExpiresAt              │
+│     TotalAmount          │          └────────────────────────────┘
+│     Discount             │
+│     FinalAmount          │          ┌────────────────────────────┐
+│     ModeOfPayment        │          │         Payment             │
+│     Status (enum)        │          ├────────────────────────────┤
+│     DeliveryAddress      │          │ PK  PaymentId (GUID)       │
+│     Notes                │◄────────►│ FK  OrderId               │
+│     CancellationReason   │          │     CustomerId             │
+│     CreatedAt / UpdatedAt│          │     Amount                 │
+└───────────┬─────────────┘          │     Status (enum)          │
+            │ 1:N                     │     Mode (enum)            │
+            │                         │     RazorpayOrderId        │
+┌───────────▼─────────────┐          │     RazorpayPaymentId      │
+│        OrderItem         │          │     FailureReason          │
+├─────────────────────────┤          │     CreatedAt              │
+│ PK  OrderItemId (GUID)   │          └────────────────────────────┘
+│ FK  OrderId              │
+│     MenuItemId (snapshot)│          ┌────────────────────────────┐
+│     Name / Price         │          │          Wallet             │
+│     Quantity             │          ├────────────────────────────┤
+│     Customization        │          │ PK  WalletId (GUID)        │
+└─────────────────────────┘          │     CustomerId             │
+                                      │     Balance                │
+┌─────────────────────────┐          └────────────┬───────────────┘
+│         Review           │                       │ 1:N
+├─────────────────────────┤          ┌─────────────▼──────────────┐
+│ PK  ReviewId (GUID)      │          │      WalletStatement        │
+│     OrderId (UNIQUE FK)  │          ├────────────────────────────┤
+│     CustomerId (FK)      │          │ PK  StatementId (GUID)     │
+│     RestaurantId (FK)    │          │ FK  WalletId               │
+│     AgentId (FK?)        │          │     Type (enum)            │
+│     FoodRating (1-5)     │          │     Amount                 │
+│     DeliveryRating (1-5) │          │     Description            │
+│     Comment              │          │     TransactionRef         │
+│     IsActive             │          │     CreatedAt              │
+│     CreatedAt / UpdatedAt│          └────────────────────────────┘
+└─────────────────────────┘
+
+┌─────────────────────────┐
+│       Notification       │
+├─────────────────────────┤
+│ PK  Id (GUID)            │
+│     RecipientId (FK)     │
+│     Type (enum)          │
+│     Title / Message      │
+│     IsRead               │
+│     PlaySound            │
+│     CreatedAt            │
+└─────────────────────────┘
+```
+
+---
+
+## 🔁 Complete Order Flow — Sequence Diagram
+
+```
+Customer       Gateway       AuthSvc     CartSvc    OrderSvc    PaymentSvc   DeliverySvc  NotifSvc
+   │              │             │            │          │             │             │           │
+   │─ Register ──►│─────────────►│            │          │             │             │           │
+   │◄─ JWT ───────┤◄────────────┤            │          │             │             │           │
+   │              │             │            │          │             │             │           │
+   │─ Browse Menu ►│             │            │          │             │             │           │
+   │◄─ Items ─────┤             │            │          │             │             │           │
+   │              │             │            │          │             │             │           │
+   │─ Add to Cart ►│─────────────────────────►│          │             │             │           │
+   │              │             │            │ Redis ↓  │             │             │           │
+   │◄─ Cart State ─┤             │            │ persist  │             │             │           │
+   │              │             │            │          │             │             │           │
+   │─ Apply Promo ►│─────────────────────────►│          │             │             │           │
+   │◄─ Discounted ─┤             │            │          │             │             │           │
+   │              │             │            │          │             │             │           │
+   │─ Place Order ►│─────────────────────────────────────►│             │             │           │
+   │              │             │            │          │ Save DB     │             │           │
+   │              │             │            │          │─────────────────────────────────────────►
+   │              │             │            │          │             │             │ Push InApp│
+   │              │             │            │          │             │             │ Send Email│
+   │              │             │            │          │             │             │ Send SMS  │
+   │◄─ Order ID ───┤             │            │          │             │             │           │
+   │              │             │            │          │             │             │           │
+   │─ Process Pmt ►│─────────────────────────────────────────────────►│             │           │
+   │              │             │            │          │  Razorpay ↓ │             │           │
+   │◄─ Pmt Status ─┤             │            │          │  or Wallet  │             │           │
+   │              │             │            │          │             │             │           │
+   │ (Restaurant accepts order)  │            │          │             │             │           │
+   │              │             │            │          │◄─ Status:   │             │           │
+   │              │             │            │          │  Confirmed  │             │           │
+   │              │             │            │          │─────────────────────────────────────────►
+   │              │             │            │          │             │             │ Notify    │
+   │              │             │            │          │             │             │ Customer  │
+   │              │             │            │          │             │             │           │
+   │              │             │    (Admin assigns agent)            │             │           │
+   │              │             │            │          │─────────────────────────►│           │
+   │              │             │            │          │             │ Agent GPS  │           │
+   │              │             │            │          │             │ Updates    │           │
+   │              │             │            │          │             │ (SignalR)  │           │
+   │              │             │            │          │             │             │           │
+   │ (Agent delivers)           │            │          │             │             │           │
+   │              │             │            │          │─────────────────────────────────────────►
+   │              │             │            │          │             │             │ Delivered │
+   │◄─ WS Push ────────────────────────────────────────────────────────────────────┤ Notif.   │
+   │              │             │            │          │             │             │           │
+   │─ Submit Review►│            │            │          │             │             │           │
+   │              │             │            │      ReviewSvc                                  │
+   │◄─ Rating Saved┤             │            │      (FoodRating + DeliveryRating)             │
+```
+
+---
+
+## 🏛️ Clean Architecture Layers (Per Microservice)
+
+```
+┌────────────────────────────────────────────────────────────┐
+│                        API LAYER                           │
+│  Controllers/           Program.cs        Middleware       │
+│  [Route] + [Authorize]  DI Registration   Error Handler   │
+│  DTO Binding            JWT Validation    Health Check     │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ calls
+┌──────────────────────────▼─────────────────────────────────┐
+│                   APPLICATION LAYER                        │
+│  Interfaces/IXxxService   Services/XxxServiceImpl          │
+│  Business Logic           Validation Rules                 │
+│  DTO Mapping              Result Wrappers (AuthResult)     │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ uses
+┌──────────────────────────▼─────────────────────────────────┐
+│                     DOMAIN LAYER                           │
+│  Models/              Enums/                               │
+│  (Order, Cart,        (OrderStatus, PaymentMode,           │
+│   Payment, Review…)    VehicleType, DeliveryStatus…)       │
+└──────────────────────────┬─────────────────────────────────┘
+                           │ persisted by
+┌──────────────────────────▼─────────────────────────────────┐
+│                 INFRASTRUCTURE LAYER                       │
+│  Data/AppDbContext        Migrations/                      │
+│  EF Core + Supabase PG    JWT (ASP.NET Identity)           │
+│  Redis (IRedisCache)      Razorpay SDK                     │
+│  SignalR Hubs             SMTP EmailService                │
+│  Twilio SmsService        HttpClientFactory (inter-svc)    │
+└────────────────────────────────────────────────────────────┘
+```
+
+## 🏛 High-Level Design (HLD)
+
+![High-Level Design](docs/eatoclock_hld.png)
+
+---
+
+## 🔧 Low-Level Design (LLD)
+
+![Low-Level Design](docs/eatoclock_lld.png)
+
+---
+
+## 🏛 Unified Modelling Language Diagram (UML)
+
+![UML Diagram](docs/eatoclock_uml.png)
 
 ---
 
@@ -397,90 +698,220 @@ EatOClock/
 
 ---
 
-## 🌐 API Endpoints (Per Service)
+## 🌐 API Endpoints & Swagger Testing
 
-All routes pass through the **API Gateway at `:5000`** which proxies to the respective service.
+All services expose Swagger UI. Access locally at `http://localhost:{port}/swagger`.
 
-### 🔐 Auth Service — `/api/auth`
+### 🔑 AuthService — `http://localhost:5001/swagger`
 
-| Method   | Endpoint               | Auth Required | Description                                    |
-| -------- | ---------------------- | ------------- | ---------------------------------------------- |
-| `POST`   | `/api/auth/register`   | No            | Register a new user (Customer / Owner / Agent) |
-| `POST`   | `/api/auth/login`      | No            | Login and receive JWT + refresh token          |
-| `POST`   | `/api/auth/refresh`    | No            | Refresh an expired JWT                         |
-| `GET`    | `/api/auth/profile`    | Yes           | Get own profile                                |
-| `PUT`    | `/api/auth/profile`    | Yes           | Update profile details                         |
-| `PUT`    | `/api/auth/password`   | Yes           | Change password                                |
-| `DELETE` | `/api/auth/deactivate` | Yes           | Deactivate account                             |
+| Method | Endpoint                                | Role              | Description                                                |
+| ------ | --------------------------------------- | ----------------- | ---------------------------------------------------------- |
+| POST   | `/api/v1/auth/register`                 | Public            | Register new user (Customer/RestaurantOwner/DeliveryAgent) |
+| POST   | `/api/v1/auth/login`                    | Public            | Login → returns `accessToken` + `refreshToken`             |
+| POST   | `/api/v1/auth/refresh`                  | Public            | Refresh expired access token                               |
+| POST   | `/api/v1/auth/bootstrap-admin/{userId}` | Public (one-time) | Promote first admin (blocked if admin exists)              |
+| POST   | `/api/v1/auth/assign-admin/{userId}`    | Admin             | Assign admin role to user                                  |
+| GET    | `/api/v1/auth/profile`                  | Admin             | Get own profile                                            |
+| GET    | `/api/v1/auth/user/{userId}`            | Admin             | Lookup user by ID                                          |
+| PUT    | `/api/v1/auth/profile`                  | Admin             | Update name / phone                                        |
+| POST   | `/api/v1/auth/change-password`          | Authenticated     | Change password                                            |
+| DELETE | `/api/v1/auth/deactivate`               | Authenticated     | Soft-delete own account                                    |
 
----
+**Swagger Test Flow:**
 
-### 🍜 Restaurant Service — `/api/restaurants`
-
-| Method   | Endpoint                             | Auth Required     | Description                             |
-| -------- | ------------------------------------ | ----------------- | --------------------------------------- |
-| `POST`   | `/api/restaurants`                   | Yes (Owner)       | Register a new restaurant               |
-| `GET`    | `/api/restaurants/{id}`              | No                | Get restaurant by ID                    |
-| `GET`    | `/api/restaurants/owner/{ownerId}`   | Yes               | Get restaurants by owner                |
-| `GET`    | `/api/restaurants/city/{city}`       | No                | Get restaurants by city                 |
-| `GET`    | `/api/restaurants/cuisine/{cuisine}` | No                | Filter by cuisine                       |
-| `GET`    | `/api/restaurants/nearby`            | No                | Get nearby restaurants (lat/lng/radius) |
-| `GET`    | `/api/restaurants/search`            | No                | Search restaurants by name              |
-| `PUT`    | `/api/restaurants/{id}`              | Yes (Owner)       | Update restaurant details               |
-| `PUT`    | `/api/restaurants/{id}/approve`      | Yes (Admin)       | Approve restaurant                      |
-| `PUT`    | `/api/restaurants/{id}/toggle-open`  | Yes (Owner)       | Toggle open/closed                      |
-| `DELETE` | `/api/restaurants/{id}`              | Yes (Admin/Owner) | Delete restaurant                       |
+```
+1. POST /register  → copy accessToken
+2. Click "Authorize" → paste "Bearer <accessToken>"
+3. GET /profile    → verify roles in response
+```
 
 ---
 
-### 🍕 Menu Service — `/api/menu`
+### 🏪 RestaurantService — `http://localhost:5002/swagger`
 
-| Method   | Endpoint                              | Auth Required | Description                    |
-| -------- | ------------------------------------- | ------------- | ------------------------------ |
-| `POST`   | `/api/menu/category`                  | Yes (Owner)   | Create a menu category         |
-| `POST`   | `/api/menu/item`                      | Yes (Owner)   | Add a menu item                |
-| `GET`    | `/api/menu/restaurant/{restaurantId}` | No            | Get full menu for a restaurant |
-| `GET`    | `/api/menu/categories/{restaurantId}` | No            | Get categories only            |
-| `GET`    | `/api/menu/item/{itemId}`             | No            | Get single item                |
-| `PUT`    | `/api/menu/item/{itemId}`             | Yes (Owner)   | Update menu item               |
-| `PUT`    | `/api/menu/item/{itemId}/toggle`      | Yes (Owner)   | Toggle item availability       |
-| `DELETE` | `/api/menu/item/{itemId}`             | Yes (Owner)   | Delete menu item               |
-| `DELETE` | `/api/menu/category/{categoryId}`     | Yes (Owner)   | Delete category                |
-| `GET`    | `/api/menu/search`                    | No            | Search menu items by keyword   |
-| `GET`    | `/api/menu/veg/{restaurantId}`        | No            | Get veg items only             |
-
----
-
-### 📦 Order Service — `/api/orders`
-
-| Method | Endpoint                                | Auth Required      | Description                     |
-| ------ | --------------------------------------- | ------------------ | ------------------------------- |
-| `POST` | `/api/orders`                           | Yes (Customer)     | Place a new order               |
-| `GET`  | `/api/orders/{id}`                      | Yes                | Get order by ID                 |
-| `GET`  | `/api/orders/customer/{customerId}`     | Yes                | Get all orders for a customer   |
-| `GET`  | `/api/orders/restaurant/{restaurantId}` | Yes (Owner)        | Get all orders for a restaurant |
-| `GET`  | `/api/orders/active`                    | Yes                | Get active (in-progress) orders |
-| `PUT`  | `/api/orders/{id}/status`               | Yes (Owner/Agent)  | Update order status             |
-| `PUT`  | `/api/orders/{id}/assign-agent`         | Yes (Admin/System) | Assign delivery agent           |
-| `PUT`  | `/api/orders/{id}/cancel`               | Yes (Customer)     | Cancel an order                 |
-| `POST` | `/api/orders/{id}/reorder`              | Yes (Customer)     | Reorder from history            |
-| `GET`  | `/api/orders/count`                     | Yes (Admin)        | Get total order count           |
+| Method | Endpoint                                  | Role                   | Description                          |
+| ------ | ----------------------------------------- | ---------------------- | ------------------------------------ |
+| POST   | `/api/v1/restaurant`                      | RestaurantOwner, Admin | Create restaurant (pending approval) |
+| GET    | `/api/v1/restaurant`                      | Public                 | List all approved restaurants        |
+| GET    | `/api/v1/restaurant/{id}`                 | Public                 | Get restaurant details               |
+| GET    | `/api/v1/restaurant/search`               | Public                 | Search by name/cuisine               |
+| POST   | `/api/v1/restaurant/nearby`               | Public                 | Geo-search by lat/lng radius         |
+| PUT    | `/api/v1/restaurant/{id}`                 | RestaurantOwner, Admin | Update restaurant info               |
+| DELETE | `/api/v1/restaurant/{id}`                 | RestaurantOwner, Admin | Delete restaurant                    |
+| POST   | `/api/v1/restaurant/{id}/approve`         | Admin                  | Approve pending restaurant           |
+| POST   | `/api/v1/restaurant/{id}/reject`          | Admin                  | Reject restaurant                    |
+| GET    | `/api/v1/restaurant/owner/my-restaurants` | RestaurantOwner        | Get own restaurants                  |
 
 ---
 
-### 🛵 Delivery Agent Service — `/api/agents`
+### 🍕 MenuService — `http://localhost:5003/swagger`
 
-| Method | Endpoint                        | Auth Required  | Description                  |
-| ------ | ------------------------------- | -------------- | ---------------------------- |
-| `POST` | `/api/agents/register`          | Yes            | Register as delivery agent   |
-| `GET`  | `/api/agents/{id}`              | Yes            | Get agent profile            |
-| `PUT`  | `/api/agents/{id}/availability` | Yes (Agent)    | Toggle online/offline        |
-| `PUT`  | `/api/agents/{id}/location`     | Yes (Agent)    | Update GPS location          |
-| `POST` | `/api/agents/{id}/assign-order` | Yes            | Assign an order to agent     |
-| `GET`  | `/api/agents/nearby`            | Yes            | Find nearby available agents |
-| `GET`  | `/api/agents/{id}/deliveries`   | Yes            | Get delivery history         |
-| `POST` | `/api/agents/{id}/rate`         | Yes (Customer) | Rate a delivery              |
-| `PUT`  | `/api/agents/{agentId}/approve` | Yes (Admin)    | Approve agent                |
+| Method | Endpoint                                  | Role                   | Description                               |
+| ------ | ----------------------------------------- | ---------------------- | ----------------------------------------- |
+| POST   | `/api/v1/menu/category`                   | RestaurantOwner, Admin | Create menu category                      |
+| GET    | `/api/v1/menu/category/{restaurantId}`    | All                    | Get all categories + items for restaurant |
+| POST   | `/api/v1/menu/item`                       | RestaurantOwner, Admin | Add menu item                             |
+| PUT    | `/api/v1/menu/item/{itemId}`              | RestaurantOwner, Admin | Update menu item                          |
+| DELETE | `/api/v1/menu/item/{itemId}`              | RestaurantOwner, Admin | Remove menu item                          |
+| PATCH  | `/api/v1/menu/item/{itemId}/availability` | RestaurantOwner, Admin | Toggle available/unavailable              |
+
+---
+
+### 🛒 CartService — `http://localhost:5004/swagger`
+
+| Method | Endpoint                          | Role            | Description                           |
+| ------ | --------------------------------- | --------------- | ------------------------------------- |
+| GET    | `/api/v1/cart`                    | Customer, Admin | View current cart                     |
+| POST   | `/api/v1/cart/items`              | Customer, Admin | Add item (enforces single restaurant) |
+| PUT    | `/api/v1/cart/items/{itemId}/qty` | Customer, Admin | Update item quantity                  |
+| DELETE | `/api/v1/cart/items/{itemId}`     | Customer, Admin | Remove item                           |
+| DELETE | `/api/v1/cart`                    | Customer, Admin | Clear entire cart                     |
+| POST   | `/api/v1/cart/promo`              | Customer, Admin | Apply promo code                      |
+| POST   | `/api/v1/cart/switch-restaurant`  | Customer, Admin | Clear cart and switch restaurant      |
+
+**Swagger Test Flow:**
+
+```
+1. POST /cart/items   { "menuItemId": "...", "name": "Burger", "price": 199, "quantity": 2 }
+2. POST /cart/promo   { "promoCode": "SAVE10" }
+3. GET  /cart         → verify discounted total
+```
+
+---
+
+### 📦 OrderService — `http://localhost:5005/swagger`
+
+| Method | Endpoint                           | Role                                  | Description                             |
+| ------ | ---------------------------------- | ------------------------------------- | --------------------------------------- |
+| POST   | `/api/v1/orders`                   | Customer, Admin                       | Place new order (triggers notification) |
+| GET    | `/api/v1/orders/{id}`              | Authenticated                         | Get order by ID                         |
+| GET    | `/api/v1/orders/customer`          | Customer, Admin                       | Get own order history                   |
+| GET    | `/api/v1/orders/restaurant/{rId}`  | RestaurantOwner, Admin                | Get restaurant's orders                 |
+| PUT    | `/api/v1/orders/{id}/status`       | RestaurantOwner, Admin, DeliveryAgent | Update order status                     |
+| PUT    | `/api/v1/orders/{id}/cancel`       | Customer, Admin                       | Cancel order                            |
+| POST   | `/api/v1/orders/{id}/reorder`      | Customer, Admin                       | Duplicate a past order                  |
+| PUT    | `/api/v1/orders/{id}/confirm`      | Customer, Admin                       | Confirm order                           |
+| PUT    | `/api/v1/orders/{id}/assign-agent` | Admin, RestaurantOwner, DeliveryAgent | Assign delivery agent                   |
+| GET    | `/api/v1/orders/all`               | Admin                                 | Get all platform orders                 |
+| GET    | `/api/v1/orders/available`         | Admin, DeliveryAgent                  | Orders awaiting agent pickup            |
+| GET    | `/api/v1/orders/agent/{aId}`       | Admin, DeliveryAgent                  | Orders assigned to agent                |
+
+---
+
+### 💳 PaymentService — `http://localhost:5006/swagger`
+
+**Payments (`/api/v1/payments`)**
+
+| Method | Endpoint                           | Role            | Description                               |
+| ------ | ---------------------------------- | --------------- | ----------------------------------------- |
+| POST   | `/api/v1/payments/process`         | Customer, Admin | Process payment (Razorpay / Wallet / COD) |
+| POST   | `/api/v1/payments/refund`          | Customer, Admin | Initiate refund                           |
+| GET    | `/api/v1/payments/order/{orderId}` | Customer, Admin | Get payment for order                     |
+| GET    | `/api/v1/payments/customer`        | Customer, Admin | Customer payment history                  |
+| GET    | `/api/v1/payments/all`             | Admin           | All platform transactions                 |
+
+**Wallet (`/api/v1/wallet`)**
+
+| Method | Endpoint                        | Role            | Description                                          |
+| ------ | ------------------------------- | --------------- | ---------------------------------------------------- |
+| GET    | `/api/v1/wallet/balance`        | Customer, Admin | Get wallet balance                                   |
+| POST   | `/api/v1/wallet/add`            | Customer, Admin | Add money (manual / test)                            |
+| POST   | `/api/v1/wallet/topup/initiate` | Customer, Admin | Initiate Razorpay top-up → returns `razorpayOrderId` |
+| POST   | `/api/v1/wallet/pay`            | Customer, Admin | Pay from wallet                                      |
+| GET    | `/api/v1/wallet/statements`     | Customer, Admin | Transaction ledger                                   |
+
+**Swagger Test Flow (Razorpay Top-up):**
+
+```
+1. POST /wallet/topup/initiate  { "amount": 500 }
+   → copy razorpayOrderId
+2. Complete payment on Razorpay test widget
+3. GET /wallet/balance → verify balance increased
+```
+
+---
+
+### 🛵 DeliveryAgentService — `http://localhost:5007/swagger`
+
+| Method | Endpoint                                          | Role                   | Description                            |
+| ------ | ------------------------------------------------- | ---------------------- | -------------------------------------- |
+| POST   | `/api/v1/agents/register`                         | DeliveryAgent, Admin   | Register agent profile                 |
+| GET    | `/api/v1/agents/{id}`                             | DeliveryAgent, Admin   | Get agent by ID                        |
+| GET    | `/api/v1/agents/my-profile`                       | DeliveryAgent, Admin   | Get own profile                        |
+| PUT    | `/api/v1/agents/{id}/verify`                      | Admin                  | Verify/approve agent                   |
+| DELETE | `/api/v1/agents/{id}/reject`                      | Admin                  | Reject agent registration              |
+| PUT    | `/api/v1/agents/{id}/availability`                | DeliveryAgent, Admin   | Toggle online/offline                  |
+| PUT    | `/api/v1/agents/{id}/location`                    | DeliveryAgent, Admin   | Update GPS coordinates                 |
+| GET    | `/api/v1/agents/{id}/orders`                      | DeliveryAgent, Admin   | View assigned orders                   |
+| POST   | `/api/v1/agents/{id}/pickup/{orderId}`            | DeliveryAgent, Admin   | Mark order picked up                   |
+| POST   | `/api/v1/agents/{id}/complete-delivery/{orderId}` | DeliveryAgent, Admin   | Mark delivered                         |
+| GET    | `/api/v1/agents/{id}/earnings`                    | DeliveryAgent, Admin   | View earnings & delivery history       |
+| GET    | `/api/v1/agents/nearby`                           | Admin, RestaurantOwner | Find agents within radius (lat/lng/km) |
+| GET    | `/api/v1/agents/all`                              | Admin                  | List all registered agents             |
+| POST   | `/api/v1/agents/{id}/assign`                      | DeliveryAgent, Admin   | Assign order to agent                  |
+| PUT    | `/api/v1/agents/{id}/rating`                      | Admin                  | Update agent delivery rating           |
+
+**SignalR Hub:** `ws://localhost:5007/hubs/location` — live GPS broadcast
+
+---
+
+### ⭐ ReviewService — `http://localhost:5008/swagger`
+
+| Method | Endpoint                               | Role                                  | Description                                 |
+| ------ | -------------------------------------- | ------------------------------------- | ------------------------------------------- |
+| POST   | `/api/v1/reviews`                      | Customer, Admin                       | Submit review (FoodRating + DeliveryRating) |
+| GET    | `/api/v1/reviews/restaurant/{rId}`     | Customer, RestaurantOwner, Admin      | All reviews for restaurant                  |
+| GET    | `/api/v1/reviews/agent/{aId}`          | Customer, RestaurantOwner, Admin      | All reviews for agent                       |
+| GET    | `/api/v1/reviews/order/{oId}`          | Admin, DeliveryAgent, RestaurantOwner | Review for specific order                   |
+| PUT    | `/api/v1/reviews/{id}`                 | Customer, Admin                       | Edit own review                             |
+| DELETE | `/api/v1/reviews/{id}`                 | Admin                                 | Moderate / remove review                    |
+| GET    | `/api/v1/reviews/avg/restaurant/{rId}` | Customer, RestaurantOwner, Admin      | Average food rating                         |
+| GET    | `/api/v1/reviews/avg/agent/{aId}`      | Customer, RestaurantOwner, Admin      | Average delivery rating                     |
+
+---
+
+### 🔔 NotificationService — `http://localhost:5009/swagger`
+
+| Method | Endpoint                                 | Role            | Description                         |
+| ------ | ---------------------------------------- | --------------- | ----------------------------------- |
+| GET    | `/api/v1/notifications`                  | Customer, Admin | Get all notifications               |
+| GET    | `/api/v1/notifications/unread-count`     | Customer, Admin | Badge count                         |
+| PUT    | `/api/v1/notifications/{id}/read`        | Customer, Admin | Mark one as read                    |
+| PUT    | `/api/v1/notifications/read-all`         | Customer, Admin | Mark all as read                    |
+| DELETE | `/api/v1/notifications/{id}`             | Customer, Admin | Delete notification                 |
+| POST   | `/api/v1/notifications/broadcast`        | Admin           | Platform-wide SignalR broadcast     |
+| POST   | `/api/v1/notifications/order`            | Internal        | Order status → in-app + email + SMS |
+| POST   | `/api/v1/notifications/restaurant-alert` | Internal        | New order alert to restaurant       |
+| POST   | `/api/v1/notifications/send`             | Internal        | Generic in-app + email/SMS trigger  |
+| POST   | `/api/v1/notifications/send-email`       | Internal        | Standalone email dispatch           |
+| POST   | `/api/v1/notifications/send-sms`         | Internal        | Standalone SMS dispatch             |
+
+**SignalR Hub:** `ws://localhost:5009/hubs/notifications` — real-time in-app push
+
+---
+
+## 🔐 Role-Based Access Control
+
+| Role                | Permissions                                                                                                                  |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| **Customer**        | Browse, Cart, Order, Pay, Review, Notifications                                                                              |
+| **RestaurantOwner** | Manage own restaurants & menus, view restaurant orders, find nearby agents                                                   |
+| **DeliveryAgent**   | Register profile, toggle availability, update GPS, manage deliveries, view earnings                                          |
+| **Admin**           | Full access — approve/reject restaurants & agents, moderate reviews, broadcast notifications, view all orders & transactions |
+
+---
+
+## 🗄️ Database Schema Map
+
+| Schema (Supabase) | Service                        | Key Tables                                                 |
+| ----------------- | ------------------------------ | ---------------------------------------------------------- |
+| `auth_custom`     | AuthService                    | `AspNetUsers`, `AspNetRoles`, `AspNetUserRoles`            |
+| `restaurants`     | RestaurantService, MenuService | `Restaurants`, `MenuCategories`, `MenuItems`               |
+| `orders`          | CartService, OrderService      | `Carts`, `CartItems`, `PromoCodes`, `Orders`, `OrderItems` |
+| `payments`        | PaymentService                 | `Payments`, `Wallets`, `WalletStatements`                  |
+| `delivery`        | DeliveryAgentService           | `DeliveryAgents`, `DeliveryRecords`                        |
+| `analytics`       | ReviewService                  | `Reviews`                                                  |
+| `notifications`   | NotificationService            | `Notifications`                                            |
 
 ---
 
@@ -499,166 +930,199 @@ All routes pass through the **API Gateway at `:5000`** which proxies to the resp
 
 ---
 
-## ⚙️ Installation & Setup
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/en-us/download/dotnet/8.0)
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
-- [PostgreSQL](https://www.postgresql.org/) — or a Supabase project
-- [Redis](https://redis.io/) — local or Docker
-- Git
+- .NET 8.0 SDK
+- Docker & Docker Compose
+- Redis 7+
+- Supabase account (or local PostgreSQL)
+- Razorpay test account (for payment testing)
+- Twilio account (for SMS)
+- Gmail app password (for SMTP)
 
-### 1. Clone the Repository
+### Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+# JWT
+JWT_KEY=mysecretkey1234567890mysecretkey1234567890
+JWT_ISSUER=EatOClock
+JWT_AUDIENCE=EatOClockUsers
+
+# Supabase PostgreSQL (or local PG)
+DB_HOST=aws-1-ap-southeast-2.pooler.supabase.com
+DB_PORT=6543
+DB_NAME=postgres
+DB_USER=postgres.<project-ref>
+DB_PASSWORD=your_db_password
+
+# Razorpay
+RAZORPAY_KEY_ID=rzp_test_xxxxxxxxxxxx
+RAZORPAY_KEY_SECRET=xxxxxxxxxxxxxxxxxxxx
+
+# Email (SMTP)
+SMTP_USER=your@gmail.com
+SMTP_PASS=your_app_password
+
+# Twilio (SMS)
+TWILIO_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_TOKEN=your_auth_token
+```
+
+### Option 1: Docker Compose (Recommended)
 
 ```bash
-git clone https://github.com/your-username/EatOClock.git
+# Clone the repository
+git clone https://github.com/yourusername/EatOClock.git
 cd EatOClock
-```
 
-### 2. Configure Connection Strings
+# Configure environment
+cp .env.example .env
+# Edit .env with your credentials
 
-Each service has its own `appsettings.json`. Update the connection string for your PostgreSQL instance:
-
-```json
-// Services/Auth_Service/appsettings.json
-{
-  "ConnectionStrings": {
-    "DefaultConnection": "Host=your-host;Port=5432;Database=eatoclock_auth;Username=postgres;Password=your-password"
-  },
-  "JwtSettings": {
-    "Secret": "your-super-secret-key-min-32-chars",
-    "Issuer": "EatOClock",
-    "Audience": "EatOClock",
-    "ExpiryMinutes": 60
-  }
-}
-```
-
-Repeat for `Restaurant_Service`, `Menu_Service`, `Order_Service`, and `DeliveryAgent_Service` using separate database names:
-
-| Service    | Database Name           |
-| ---------- | ----------------------- |
-| Auth       | `eatoclock_auth`        |
-| Restaurant | `eatoclock_restaurants` |
-| Menu       | `eatoclock_menu`        |
-| Order      | `eatoclock_orders`      |
-| Delivery   | `eatoclock_delivery`    |
-
-### 3. Run Database Migrations
-
-Run migrations for each service from the solution root:
-
-```bash
-dotnet ef database update --project Services/Auth_Service
-dotnet ef database update --project Services/Restaurant_Service
-dotnet ef database update --project Services/Menu_Service
-dotnet ef database update --project Services/Order_Service
-dotnet ef database update --project Services/DeliveryAgent_Service
-```
-
-### 4. Configure Redis
-
-If running Redis locally via Docker:
-
-```bash
-docker run -d -p 6379:6379 --name eatoclock-redis redis:alpine
-```
-
-Update each service's `appsettings.json`:
-
-```json
-"Redis": {
-  "ConnectionString": "localhost:6379"
-}
-```
-
----
-
-## 🚀 How to Run
-
-### Option A — Run All Services via Docker Compose (Recommended)
-
-```bash
+# Build and start all services
 docker-compose up --build
+
+# Services available at:
+# Gateway:            http://localhost:5000
+# AuthService:        http://localhost:5001/swagger
+# RestaurantService:  http://localhost:5002/swagger
+# MenuService:        http://localhost:5003/swagger
+# CartService:        http://localhost:5004/swagger
+# OrderService:       http://localhost:5005/swagger
+# PaymentService:     http://localhost:5006/swagger
+# DeliveryService:    http://localhost:5007/swagger
+# ReviewService:      http://localhost:5008/swagger
+# NotificationService:http://localhost:5009/swagger
 ```
 
-This starts all 5 microservices + the API Gateway. Default port mapping:
-
-| Service                | Port   |
-| ---------------------- | ------ |
-| API Gateway            | `5000` |
-| Auth Service           | `8081` |
-| Restaurant Service     | `8082` |
-| Menu Service           | `8083` |
-| Order Service          | `8084` |
-| Delivery Agent Service | `8085` |
-
-### Option B — Run Individually with .NET CLI
-
-Open a terminal for each service:
+### Option 2: Run Services Individually
 
 ```bash
-# Terminal 1 — API Gateway
-cd API-Gateway/EatOClock.Gateway
-dotnet run
+# Start Redis
+docker run -d -p 6379:6379 redis:7-alpine
 
-# Terminal 2 — Auth Service
-cd Services/Auth_Service
-dotnet run
+# Run each service (separate terminals)
+dotnet run --project Services/Auth_Service
+dotnet run --project Services/Restaurant_Service
+dotnet run --project Services/Menu_Service
+dotnet run --project Services/Cart_Service
+dotnet run --project Services/Order_Service
+dotnet run --project Services/Payment_Service
+dotnet run --project Services/DeliveryAgent_Service
+dotnet run --project Services/Review_Service
+dotnet run --project Services/Notification_Service
+dotnet run --project API-Gateway/EatOClock.Gateway
 
-# Terminal 3 — Restaurant Service
-cd Services/Restaurant_Service
-dotnet run
-
-# Terminal 4 — Menu Service
-cd Services/Menu_Service
-dotnet run
-
-# Terminal 5 — Order Service
-cd Services/Order_Service
-dotnet run
-
-# Terminal 6 — Delivery Agent Service
-cd Services/DeliveryAgent_Service
-dotnet run
+# Run migrations (per service)
+cd Services/Auth_Service && dotnet ef database update
 ```
 
-### Option C — Visual Studio / Rider
+### Health Checks
 
-Open `EatOClock.sln`, set multiple startup projects (all 5 services + gateway), and press **Run**.
+```bash
+curl http://localhost:5000/health
+# → { "status": "Healthy", "service": "Gateway", "time": "..." }
+```
 
 ---
 
-## 🧪 How to Test
-
-### Unit / Integration Tests
+## 🧪 Testing
 
 ```bash
+# Run all tests
 cd Tests/EatOClock.Tests
-dotnet test --verbosity normal
+dotnet test
+
+# Run with coverage
+dotnet test --collect:"XPlat Code Coverage"
+
+# Generate coverage report
+reportgenerator -reports:TestResults/*/coverage.opencover.xml -targetdir:coverage-report
 ```
 
-### Swagger UI (per service, when running individually)
+### Sample API Test Requests
 
-Each service exposes Swagger at:
+**Register & Login:**
+
+```bash
+# Register
+curl -X POST http://localhost:5000/api/v1/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"fullName":"John Doe","email":"john@example.com","password":"Pass@1234","role":"Customer"}'
+
+# Login
+curl -X POST http://localhost:5000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"john@example.com","password":"Pass@1234"}'
+```
+
+**Place Order (with JWT):**
+
+```bash
+curl -X POST http://localhost:5000/api/v1/orders \
+  -H "Authorization: Bearer <JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "restaurantId": "<guid>",
+    "items": [{"menuItemId":"<guid>","name":"Burger","price":199,"quantity":2}],
+    "deliveryAddress": "123 Main St",
+    "modeOfPayment": "Wallet"
+  }'
+```
+
+**Add Money to Wallet:**
+
+```bash
+curl -X POST http://localhost:5000/api/v1/wallet/topup/initiate \
+  -H "Authorization: Bearer <JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"amount": 500}'
+```
+
+---
+
+## 🐳 Docker Port Reference
+
+| Service              | Container Port | Host Port |
+| -------------------- | -------------- | --------- |
+| API Gateway          | 8080           | 5000      |
+| AuthService          | 8080           | 5001      |
+| RestaurantService    | 8080           | 5002      |
+| MenuService          | 8080           | 5003      |
+| CartService          | 8080           | 5004      |
+| OrderService         | 8080           | 5005      |
+| PaymentService       | 8080           | 5006      |
+| DeliveryAgentService | 8080           | 5007      |
+| ReviewService        | 8080           | 5008      |
+| NotificationService  | 8080           | 5009      |
+| Redis                | 6379           | 6379      |
+
+---
+
+## ☁️ Cloud Deployment (Render.com)
+
+Each service is deployed as a separate Render Web Service using its Dockerfile. The Gateway routes to each service's Render URL.
 
 ```
-http://localhost:{port}/swagger
+Gateway:             https://eatoclock-gateway.onrender.com
+Auth:                https://eatoclock.onrender.com
+Restaurant + Menu:   https://eatoclock-restaurant.onrender.com
+                     https://eatoclock-menu.onrender.com
+Cart:                https://eatoclock-cart.onrender.com
+Order:               https://eatoclock-order.onrender.com
+Payment:             https://eatoclock-payment.onrender.com
+Delivery:            https://eatoclock-delivery.onrender.com
+Review:              https://eatoclock-review.onrender.com
+Notification:        https://eatoclock-notif.onrender.com
 ```
 
-Example: `http://localhost:8081/swagger` for Auth Service.
+> **Note:** Free-tier Render services cold-start after inactivity. The Gateway is configured with 3-minute HTTP timeouts to accommodate this.
 
-### Test via API Gateway (all routes unified)
-
-Use the provided `.http` files in each service directory, or import into **Postman / Bruno**:
-
-```
-EatOClock/Services/Auth_Service/Auth-Service.http
-EatOClock/Services/Restaurant_Service/Restaurant_Service.http
-EatOClock/Services/DeliveryAgent_Service/DeliveryAgent_Service.http
-EatOClock/API-Gateway/EatOClock.Gateway/EatOClock.Gateway.http
-```
+---
 
 ### Health Checks
 
@@ -1027,47 +1491,38 @@ POSTGRES_HOST=localhost
 
 ## 🗺️ Roadmap
 
-### Phase 1 — Core Services ✅ Complete
+**Phase 1 — Completed ✅**
 
-- [x] Auth Service (JWT, RBAC, profile management)
-- [x] Restaurant Service (CRUD, geo-search, admin approval)
-- [x] Menu Service (categories, items, availability toggle)
-- [x] Order Service (lifecycle, assignment, cancel)
-- [x] Delivery Agent Service (registration, location, SignalR)
-- [x] API Gateway (YARP, routing, JWT validation)
-- [x] Building Blocks (Auth, Cache, Logging, HealthChecks, EventBus stub)
+- User authentication with roles (Customer, Admin, RestaurantOwner, DeliveryAgent)
+- Restaurant management with geo-search and admin approval
+- Menu categories and item management
+- Cart with single-restaurant enforcement, promo codes, Redis caching
+- Full order lifecycle with status state machine
+- Razorpay payment gateway + digital wallet
+- Delivery agent GPS tracking via SignalR
+- Review and rating system (food + delivery)
+- Real-time notifications (in-app + email + SMS)
+- YARP API Gateway with legacy-path rewriting
+- Docker Compose orchestration
+- Cloud deployment on Render.com
 
-### Phase 2 — Commerce Layer 🔜 In Progress
+**Phase 2 — Planned 🚧**
 
-- [ ] **Cart Service** — single-restaurant cart, promo codes, quantity management
-- [ ] **Payment / Wallet Service** — COD, wallet debit/credit, transaction history
-- [ ] Payment gateway integration (Razorpay / Stripe)
-- [ ] Wallet top-up and refund flows
-
-### Phase 3 — Engagement Layer 📋 Planned
-
-- [ ] **Review & Rating Service** — food rating, agent rating, review moderation
-- [ ] **Notification Service** — email (MailKit), SMS (Twilio), in-app SignalR
-- [ ] EventBus integration with RabbitMQ (replace stub)
-- [ ] Order timeout automation (Hangfire background jobs)
-
-### Phase 4 — Intelligence & Scale 🌟 Future
-
-- [ ] Analytics dashboard API (revenue by period, peak hours, top items)
-- [ ] Admin platform analytics endpoints
-- [ ] Cursor-based pagination on all list endpoints
-- [ ] Rate limiting per user (not just per IP)
-- [ ] OpenTelemetry distributed tracing
-- [ ] CI/CD pipeline (GitHub Actions)
-- [ ] Kubernetes deployment manifests (Helm charts)
-- [ ] API versioning (`/api/v2/...`)
+- Order analytics dashboard (admin)
+- Loyalty points system
+- Scheduled delivery slots
+- Multi-language support (i18n)
+- Mobile app (Flutter/React Native)
+- End-to-end integration test suite
 
 ---
 
-<div align="center">
+## 📚 References
 
-**Built with ❤️ using ASP.NET Core 8 · PostgreSQL · Redis · SignalR · Docker**
-
-_EatOClock — Order Smarter. Eat Better. Delivered Faster._
-
-</div>
+- [ASP.NET Core Documentation](https://docs.microsoft.com/aspnet/core)
+- [YARP Reverse Proxy](https://microsoft.github.io/reverse-proxy/)
+- [SignalR Documentation](https://docs.microsoft.com/aspnet/core/signalr)
+- [Entity Framework Core](https://docs.microsoft.com/ef/core)
+- [Razorpay .NET SDK](https://github.com/razorpay/razorpay-dotnet)
+- [Supabase Documentation](https://supabase.com/docs)
+- [Docker Documentation](https://docs.docker.com/)

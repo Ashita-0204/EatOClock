@@ -35,6 +35,7 @@
     <ProjectReference Include="..\..\Services\Auth_Service\Auth-Service.csproj" />
     <ProjectReference Include="..\..\Services\Order_Service\Order-Service.csproj" />
     <ProjectReference Include="..\..\Services\DeliveryAgent_Service\DeliveryAgent-Service.csproj" />
+    <ProjectReference Include="..\..\Services\Review_Service\Review-Service.csproj" />
     <ProjectReference Include="..\..\Services\Restaurant_Service\Restaurant_Service.csproj" />
     <ProjectReference Include="..\..\Services\Menu_Service\Menu-Service.csproj" />
   </ItemGroup>

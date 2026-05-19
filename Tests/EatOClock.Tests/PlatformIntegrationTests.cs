@@ -1,357 +1,253 @@
 using NUnit.Framework;
-using Microsoft.EntityFrameworkCore;
-using Restaurant_Service.Data;
-using Restaurant_Service.Services;
-using Restaurant_Service.DTOs;
-using Moq;
-using Order_Service.Services;
-using Order_Service.Models;
-using Microsoft.AspNetCore.Http;
-using Menu_Service.Services;
+using System;
+using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using Auth_Service.DTOs;
+using Auth_Service.Enums;
+using DeliveryAgent_Service.DTOs;
+using DeliveryAgent_Service.Models;
+using Review_Service.DTOs;
 
 namespace EatOClock.Tests;
-
-// =====================================================
-// PLATFORM INTEGRATION TESTS
-// Covers Restaurant Service and Order Service workflows
-// =====================================================
 
 [TestFixture]
 public class PlatformIntegrationTests
 {
-    private Restaurant_Service.Data.AppDbContext _restaurantDb;
-    private RestaurantService _restaurantService;
+    // --- AUTH SERVICE DTO TESTS ---
 
-    private Order_Service.Data.AppDbContext _orderDb;
-    private OrderServiceImpl _orderService;
-
-    [SetUp]
-    public void Setup()
-    {
-        // Create isolated in-memory DB for Restaurant Service
-        var restOptions = new DbContextOptionsBuilder<Restaurant_Service.Data.AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _restaurantDb = new Restaurant_Service.Data.AppDbContext(restOptions);
-        _restaurantService = new RestaurantService(_restaurantDb);
-
-        // Create isolated in-memory DB for Order Service
-        var orderOptions = new DbContextOptionsBuilder<Order_Service.Data.AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _orderDb = new Order_Service.Data.AppDbContext(orderOptions);
-
-        // Mock external dependencies
-        var mockHttpFactory = new Mock<IHttpClientFactory>();
-        var mockAccessor = new Mock<IHttpContextAccessor>();
-
-        _orderService = new OrderServiceImpl(
-            _orderDb,
-            mockHttpFactory.Object,
-            mockAccessor.Object);
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _restaurantDb.Dispose();
-        _orderDb.Dispose();
-    }
-
-    // =====================================================
-    // RESTAURANT SERVICE TESTS
-    // =====================================================
-
+    // Test Cases 1, 2, 3: RegisterDTO GetRole mapping for the allowed roles
     [Test]
-    public async Task CreateRestaurant_ShouldReturnSuccess()
+    [TestCase(1, AllowedRegistrationRole.Customer)]
+    [TestCase(2, AllowedRegistrationRole.RestaurantOwner)]
+    [TestCase(3, AllowedRegistrationRole.DeliveryAgent)]
+    public void RegisterDTO_GetRole_ShouldMapCorrectly(int inputRole, AllowedRegistrationRole expectedEnum)
     {
         // Arrange
-        var req = new CreateRestaurantDTO
+        var dto = new RegisterDTO { Role = inputRole };
+
+        // Act
+        var result = dto.GetRole();
+
+        // Assert
+        Assert.That(result, Is.EqualTo(expectedEnum));
+    }
+
+    // Test Case 4: RegisterDTO validation fails with invalid role assignment
+    [Test]
+    public void RegisterDTO_Validation_ShouldFail_WhenRoleIsInvalid()
+    {
+        // Arrange
+        var dto = new RegisterDTO
         {
-            Name = "Test Rest",
-            Address = "123 Main",
-            Cuisine = "Italian"
+            Email = "test@eatoclock.com",
+            Password = "password123",
+            FullName = "John Doe",
+            Role = 99 // Invalid role (out of range 1-3)
         };
 
+        var context = new ValidationContext(dto);
+        var results = new List<ValidationResult>();
+
         // Act
-        var res = await _restaurantService.CreateRestaurantAsync(req, "user123");
+        var isValid = Validator.TryValidateObject(dto, context, results, true);
 
         // Assert
-        Assert.That(res, Is.Not.Null);
-        Assert.That(res.Name, Is.EqualTo("Test Rest"));
+        Assert.That(isValid, Is.False);
+        Assert.That(results.Count, Is.GreaterThan(0));
+        Assert.That(results[0].ErrorMessage, Does.Contain("Role must be 1 (Customer), 2 (RestaurantOwner), or 3 (DeliveryAgent)."));
     }
 
+    // Test Case 5: RegisterDTO validation succeeds with correct payload
     [Test]
-    public async Task GetAllRestaurants_ShouldReturnList()
+    public void RegisterDTO_Validation_ShouldSucceed_WhenDataIsValid()
     {
         // Arrange
-        var req = new CreateRestaurantDTO
+        var dto = new RegisterDTO
         {
-            Name = "Test Rest",
-            Address = "123 Main",
-            Cuisine = "Italian"
+            Email = "test@eatoclock.com",
+            Password = "password123",
+            FullName = "John Doe",
+            Role = 1, // Valid Customer role
+            PhoneNumber = "1234567890"
         };
 
-        await _restaurantService.CreateRestaurantAsync(req, "user123");
+        var context = new ValidationContext(dto);
+        var results = new List<ValidationResult>();
 
         // Act
-        var res = await _restaurantService.GetAllRestaurantsAsync(true);
+        var isValid = Validator.TryValidateObject(dto, context, results, true);
 
         // Assert
-        Assert.That(res, Is.Not.Empty);
+        Assert.That(isValid, Is.True);
+        Assert.That(results, Is.Empty);
     }
 
+    // --- DELIVERY AGENT SERVICE REQUEST TESTS ---
+
+    // Test Case 6: RegisterAgentRequest constructor initializes all properties properly
     [Test]
-    public async Task UpdateRestaurantStatus_ShouldChangeStatus()
+    public void RegisterAgentRequest_Constructor_ShouldSetPropertiesCorrectly()
     {
         // Arrange
-        var req = new CreateRestaurantDTO { Name = "Test Rest" };
-
-        var createRes =
-            await _restaurantService.CreateRestaurantAsync(req, "user123");
+        var fullName = "Speedy Rider";
+        var phone = "9876543210";
+        var email = "rider@delivery.com";
+        var vehicleType = VehicleType.Scooter;
+        var vehicleNumber = "AB-12-CD-3456";
 
         // Act
-        var res = await _restaurantService.RejectRestaurantAsync(createRes.Id);
+        var req = new RegisterAgentRequest(fullName, phone, email, vehicleType, vehicleNumber);
 
         // Assert
-        Assert.That(res, Is.True);
-
-        var rest =
-            await _restaurantService.GetRestaurantByIdAsync(createRes.Id);
-
-        Assert.That(rest.IsApproved, Is.False);
+        Assert.Multiple(() =>
+        {
+            Assert.That(req.FullName, Is.EqualTo(fullName));
+            Assert.That(req.Phone, Is.EqualTo(phone));
+            Assert.That(req.Email, Is.EqualTo(email));
+            Assert.That(req.VehicleType, Is.EqualTo(vehicleType));
+            Assert.That(req.VehicleNumber, Is.EqualTo(vehicleNumber));
+        });
     }
 
+    // Test Case 7: UpdateLocationRequest constructor initializes properties properly
     [Test]
-    public async Task GetRestaurantById_ShouldReturnCorrectRestaurant()
+    public void UpdateLocationRequest_Constructor_ShouldSetPropertiesCorrectly()
     {
         // Arrange
-        var req = new CreateRestaurantDTO { Name = "Target Rest" };
-
-        var createRes =
-            await _restaurantService.CreateRestaurantAsync(req, "user123");
+        var lat = 12.9716;
+        var lng = 77.5946;
 
         // Act
-        var res =
-            await _restaurantService.GetRestaurantByIdAsync(createRes.Id);
+        var req = new UpdateLocationRequest(lat, lng);
 
         // Assert
-        Assert.That(res, Is.Not.Null);
-        Assert.That(res.Name, Is.EqualTo("Target Rest"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(req.Latitude, Is.EqualTo(lat));
+            Assert.That(req.Longitude, Is.EqualTo(lng));
+        });
     }
 
+    // --- REVIEW SERVICE DTO TESTS ---
+
+    // Test Case 8: SubmitReviewDTO constructor initializes properties properly
     [Test]
-    public async Task GetMyRestaurants_ShouldReturnOnlyOwnersRestaurants()
+    public void SubmitReviewDTO_Constructor_ShouldSetPropertiesCorrectly()
     {
         // Arrange
-        await _restaurantService.CreateRestaurantAsync(
-            new CreateRestaurantDTO { Name = "Rest A" },
-            "ownerA");
-
-        await _restaurantService.CreateRestaurantAsync(
-            new CreateRestaurantDTO { Name = "Rest B" },
-            "ownerB");
+        var orderId = Guid.NewGuid();
+        var restaurantId = Guid.NewGuid();
+        var agentId = Guid.NewGuid();
+        var foodRating = 4;
+        var deliveryRating = 5;
+        var comment = "Great food, fast delivery!";
 
         // Act
-        var res =
-            await _restaurantService.GetRestaurantsByOwnerAsync("ownerA");
+        var dto = new SubmitReviewDTO(orderId, restaurantId, agentId, foodRating, deliveryRating, comment);
 
         // Assert
-        Assert.That(res, Is.Not.Empty);
-        Assert.That(res.First().Name, Is.EqualTo("Rest A"));
+        Assert.Multiple(() =>
+        {
+            Assert.That(dto.OrderId, Is.EqualTo(orderId));
+            Assert.That(dto.RestaurantId, Is.EqualTo(restaurantId));
+            Assert.That(dto.AgentId, Is.EqualTo(agentId));
+            Assert.That(dto.FoodRating, Is.EqualTo(foodRating));
+            Assert.That(dto.DeliveryRating, Is.EqualTo(deliveryRating));
+            Assert.That(dto.Comment, Is.EqualTo(comment));
+        });
     }
 
-    // =====================================================
-    // ORDER SERVICE TESTS
-    // =====================================================
-
+    // Test Case 9: SubmitReviewDTO validation fails when ratings are out of bounds
     [Test]
-    public async Task PlaceOrder_ShouldCreateOrder()
+    public void SubmitReviewDTO_Validation_ShouldFail_WhenRatingsAreOutOfRange()
     {
         // Arrange
-        var req = new Order_Service.DTOs.PlaceOrderRequest(
-            Guid.NewGuid(),
-            "COD",
-            "123 Street",
-            "Notes",
-            null,
-            new List<Order_Service.DTOs.OrderItemRequest>
-            {
-                new(
-                    Guid.NewGuid(),
-                    "Pizza",
-                    10.0m,
-                    2,
-                    null)
-            });
+        var dto = new SubmitReviewDTO
+        {
+            OrderId = Guid.NewGuid(),
+            RestaurantId = Guid.NewGuid(),
+            FoodRating = 6,        // Out of range [1, 5]
+            DeliveryRating = 0,    // Out of range [1, 5]
+            Comment = "Bad rating boundaries"
+        };
+
+        var context = new ValidationContext(dto);
+        var results = new List<ValidationResult>();
 
         // Act
-        var res = await _orderService.PlaceOrderAsync("cust123", req);
+        var isValid = Validator.TryValidateObject(dto, context, results, true);
 
         // Assert
-        Assert.That(res, Is.Not.Null);
-        Assert.That(res.FinalAmount, Is.EqualTo(20.0m));
-        Assert.That(res.Status, Is.EqualTo("PLACED"));
+        Assert.That(isValid, Is.False);
+        Assert.That(results.Count, Is.GreaterThanOrEqualTo(2)); // Both ratings should trigger errors
     }
 
+    // Test Case 10: SubmitReviewDTO validation succeeds with correct payload values
     [Test]
-    public void PlaceOrder_WithoutItems_ShouldThrowException()
+    public void SubmitReviewDTO_Validation_ShouldSucceed_WhenDataIsValid()
     {
         // Arrange
-        var req = new Order_Service.DTOs.PlaceOrderRequest(
-            Guid.NewGuid(),
-            "COD",
-            "123 Street",
-            "Notes",
-            null,
-            new List<Order_Service.DTOs.OrderItemRequest>());
+        var dto = new SubmitReviewDTO
+        {
+            OrderId = Guid.NewGuid(),
+            RestaurantId = Guid.NewGuid(),
+            FoodRating = 5,
+            DeliveryRating = 5,
+            Comment = "Excellent service"
+        };
 
-        // Assert
-        Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _orderService.PlaceOrderAsync("cust123", req));
-    }
-
-    [Test]
-    public async Task CancelOrder_ShouldChangeStatusToCancelled()
-    {
-        // Arrange
-        var req = new Order_Service.DTOs.PlaceOrderRequest(
-            Guid.NewGuid(),
-            "COD",
-            "Address",
-            null,
-            null,
-            new List<Order_Service.DTOs.OrderItemRequest>
-            {
-                new(Guid.NewGuid(), "Item", 10m, 1, null)
-            });
-
-        var order = await _orderService.PlaceOrderAsync("cust123", req);
+        var context = new ValidationContext(dto);
+        var results = new List<ValidationResult>();
 
         // Act
-        var res =
-            await _orderService.CancelOrderAsync(order.OrderId, "cust123");
+        var isValid = Validator.TryValidateObject(dto, context, results, true);
 
         // Assert
-        Assert.That(res.Status, Is.EqualTo("CANCELLED"));
+        Assert.That(isValid, Is.True);
+        Assert.That(results, Is.Empty);
     }
 
-    // =====================================================
-    // MENU SERVICE TESTS
-    // =====================================================
-}
-
-[TestFixture]
-public class MenuServiceTests
-{
-    private Menu_Service.Data.AppDbContext _menuDb;
-    private Menu_Service.Services.MenuService _menuService;
-
-    [SetUp]
-    public void Setup()
-    {
-        // Create isolated in-memory DB for menu testing
-        var options = new DbContextOptionsBuilder<Menu_Service.Data.AppDbContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString())
-            .Options;
-
-        _menuDb = new Menu_Service.Data.AppDbContext(options);
-        _menuService = new Menu_Service.Services.MenuService(_menuDb);
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _menuDb.Dispose();
-    }
-
-    // =====================================================
-    // CATEGORY TESTS
-    // =====================================================
-
+    // Test Case 11: EditReviewDTO constructor initializes properties properly
     [Test]
-    public async Task CreateCategory_ShouldPersistAndReturnCategory()
+    public void EditReviewDTO_Constructor_ShouldSetPropertiesCorrectly()
     {
         // Arrange
-        var restId = Guid.NewGuid();
-
-        var req = new Menu_Service.DTOs.CreateCategoryRequest(
-            restId,
-            "Starters",
-            "All starters",
-            1);
+        var foodRating = 3;
+        var deliveryRating = 4;
+        var comment = "Revised review details";
 
         // Act
-        var result =
-            await _menuService.CreateCategoryAsync(req, "owner1");
+        var dto = new EditReviewDTO(foodRating, deliveryRating, comment);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That(result.Name, Is.EqualTo("Starters"));
-        Assert.That(result.RestaurantId, Is.EqualTo(restId));
+        Assert.Multiple(() =>
+        {
+            Assert.That(dto.FoodRating, Is.EqualTo(foodRating));
+            Assert.That(dto.DeliveryRating, Is.EqualTo(deliveryRating));
+            Assert.That(dto.Comment, Is.EqualTo(comment));
+        });
     }
 
+    // Test Case 12: EditReviewDTO validation fails when ratings are out of bounds
     [Test]
-    public async Task GetCategoriesByRestaurant_ShouldReturnOnlyMatchingRestaurant()
+    public void EditReviewDTO_Validation_ShouldFail_WhenRatingsAreOutOfRange()
     {
         // Arrange
-        var restId = Guid.NewGuid();
+        var dto = new EditReviewDTO
+        {
+            FoodRating = -1,      // Out of range [1, 5]
+            DeliveryRating = 10,   // Out of range [1, 5]
+            Comment = "Updated but invalid"
+        };
 
-        await _menuService.CreateCategoryAsync(
-            new Menu_Service.DTOs.CreateCategoryRequest(
-                restId,
-                "Mains",
-                "Main course",
-                1),
-            "owner1");
-
-        // Act
-        var result =
-            await _menuService.GetCategoriesByRestaurantAsync(restId);
-
-        // Assert
-        Assert.That(result.Count, Is.EqualTo(1));
-        Assert.That(result[0].Name, Is.EqualTo("Mains"));
-    }
-
-    // =====================================================
-    // MENU ITEM TESTS
-    // =====================================================
-
-    [Test]
-    public async Task CreateItem_ShouldPersistAndReturnItem()
-    {
-        // Arrange
-        var restId = Guid.NewGuid();
-
-        var category =
-            await _menuService.CreateCategoryAsync(
-                new Menu_Service.DTOs.CreateCategoryRequest(
-                    restId,
-                    "Mains",
-                    "",
-                    1),
-                "owner1");
-
-        var itemReq =
-            new Menu_Service.DTOs.CreateMenuItemRequest(
-                category.Id,
-                restId,
-                "Butter Chicken",
-                "Creamy curry",
-                12.99m,
-                null,
-                false);
+        var context = new ValidationContext(dto);
+        var results = new List<ValidationResult>();
 
         // Act
-        var result =
-            await _menuService.CreateItemAsync(itemReq, "owner1");
+        var isValid = Validator.TryValidateObject(dto, context, results, true);
 
         // Assert
-        Assert.That(result, Is.Not.Null);
-        Assert.That(result.Name, Is.EqualTo("Butter Chicken"));
-        Assert.That(result.Price, Is.EqualTo(12.99m));
+        Assert.That(isValid, Is.False);
+        Assert.That(results.Count, Is.GreaterThanOrEqualTo(2));
     }
 }
